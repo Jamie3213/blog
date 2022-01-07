@@ -11,6 +11,7 @@ phases:
     commands:
       - echo Build started on `date`
       - echo Building website...
+      - cd site/app
       - hugo -D
 artifacts:
   files:
