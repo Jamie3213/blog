@@ -21,18 +21,11 @@ variable "project" {
 
 variable "created_by" {
     type        = string
-    description = "The name of the user who created the resource; defaults to 'CodePipeline'."
-    default     = "CodePipeline"
+    description = "The name of the user who created the resource; defaults to 'CodeBuild'."
+    default     = "CodeBuild"
 }
 
 /* -------------------------------- Providers ------------------------------- */
-
-locals {
-    tags = {
-        Project     = var.project,
-        CreatedBy   = var.created_by
-    }
-}
 
 provider "aws" {
     region = "eu-west-1"
@@ -90,7 +83,11 @@ resource "aws_s3_bucket" "redirect_bucket" {
 
 resource "aws_s3_bucket" "logs_bucket" {
     bucket = "s3-jamie-general-logs"
-    acl = "log-delivery-write"
+    acl    = "log-delivery-write"
+}
+
+resource "aws_s3_bucket" "release_bucket" {
+    bucket = "s3-jamie-general-release-artifacts"
 }
 
 # SSL ccertificate and validation
@@ -205,4 +202,8 @@ resource "aws_route53_record" "redirect_record" {
         zone_id                = aws_cloudfront_distribution.distribution.hosted_zone_id
         evaluate_target_health = true
     }
+}
+
+resource "aws_cloudwatch_log_group" "log_group" {
+  name = "/aws/jamie/blog"
 }
