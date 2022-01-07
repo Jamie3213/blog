@@ -4,7 +4,7 @@ phases:
   pre_build:
     commands:
       - echo Installing build dependencies...
-      - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      - apt install -y hugo
       - brew install hugo
   build:
     commands:
@@ -12,5 +12,5 @@ phases:
       - echo Building website...
       - hugo -D
 artifacts:
-  file:
+  files:
     - public/**/*
