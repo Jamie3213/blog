@@ -178,28 +178,6 @@ resource "aws_codebuild_project" "build" {
 resource "aws_codebuild_webhook" "webhook" {
   project_name = aws_codebuild_project.build.name
   build_type   = "BUILD"
-  filter_group {
-    filter {
-        type    = "EVENT"
-        pattern = "PUSH"
-    }
-
-    filter {
-        type    = "HEAD_REF"
-        pattern = "main"
-    }
-
-    filter {
-        type    = "FILE_PATH"
-        pattern = "site/*"
-    }
-
-    filter {
-        type                    = "FILE_PATH"
-        pattern                 = ".gitignore"
-        exclude_matched_pattern = true
-    }
-    }
 
     filter_group {
         filter {
@@ -208,22 +186,13 @@ resource "aws_codebuild_webhook" "webhook" {
         }
 
         filter {
-            type                    = "FILE_PATH"
-            pattern                 = ".gitmodules"
-            exclude_matched_pattern = true
-        }
-    }
-
-    filter_group {
-        filter {
-            type    = "EVENT"
-            pattern = "PUSH"
+            type    = "HEAD_REF"
+            pattern = "main"
         }
 
         filter {
-            type                    = "FILE_PATH"
-            pattern                 = "README.md"
-            exclude_matched_pattern = true
+            type    = "FILE_PATH"
+            pattern = "site/*"
         }
     }
 }
