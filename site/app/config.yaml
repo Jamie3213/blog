@@ -1,0 +1,45 @@
+baseURL: https://jamiehargreaves.co.uk
+languageCode: en-us
+title: Jamie Hargreaves
+theme: mini
+
+defaultContentLanguage: en
+
+hasCJKLanguage: true
+permalinks:
+  posts: /posts/:title/
+
+# Hugo Configure Markup
+markup:
+  highlight:
+    guessSyntax: true
+    style: emacs
+  tableOfContents:
+    endLevel: 3
+    ordered: false
+    startLevel: 2
+
+# Social links in footer
+social:
+  github: https://github.com/Jamie3213?tab=repositories
+
+
+# Site parameters
+params:
+  author: Jamie Hargreaves
+  bio: Data Engineer
+  description: A Data Engineering blog
+
+
+  # Additional config options
+  enableRSS: false
+  enableComments: false
+  enableGoogleAnalytics: false
+  showToc: true
+  showPowerBy: true
+
+# Deployment
+deployment:
+  targets:
+    - name: aws-s3-deploy
+      URL: s3://www.jamiehargreaves.co.uk?region=eu-west-1
