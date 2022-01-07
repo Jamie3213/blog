@@ -145,7 +145,7 @@ resource "aws_codebuild_project" "build" {
     source {
         type                = "GITHUB"
         location            = "https://github.com/Jamie3213/blog.git"
-        buildspec           = "site/app/release/buildspec_build.yml"
+        buildspec           = "site/release/buildspec_build.yml"
         report_build_status = true
 
         git_submodules_config {
