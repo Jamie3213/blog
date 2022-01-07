@@ -70,17 +70,6 @@ data "aws_cloudwatch_log_group" "log_group" {
 
 /* -------------------------------- Resources ------------------------------- */
 
-# resource "aws_codebuild_webhook" "webhook" {
-#   project_name = aws_codebuild_project.build.name
-#   build_type   = "BUILD"
-#   filter_group {
-#     filter {
-#       type    = "EVENT"
-#       pattern = "PUSH"
-#     }
-#   }
-# }
-
 resource "aws_iam_role" "iam_role" {
   name = "iam-${data.aws_region.current.name}-dufrain-${var.project}-codebuild-service-role"
 
