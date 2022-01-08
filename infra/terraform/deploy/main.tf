@@ -250,6 +250,14 @@ resource "aws_iam_role_policy" "codebuild_iam_policy" {
         "${aws_s3_bucket.primary_bucket.arn}",
         "${aws_s3_bucket.primary_bucket.arn}/*"
       ]
+    },
+    {
+      "Sid": "KmsFullAccess",
+      "Effect": "Allow",
+      "Action": [
+        "kms:*"
+      ],
+      "Resource": "*"
     }
   ]
 }
@@ -375,7 +383,7 @@ resource "aws_iam_role_policy" "lambda_iam_policy" {
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
-      "Resource": "${aws_cloudwatch_log_group.log_group.arn}:*"
+      "Resource": "arn:aws:logs:*"
     },
     {
       "Sid": "GetBuildArtifacts",
@@ -407,6 +415,7 @@ resource "aws_lambda_function" "codebuild_trigger" {
   architectures = ["arm64"]
   memory_size   = 128
   description   = "Triggers CodeBuild build projects based on S3 change events."
+  timeout = 10
 
   environment {
     variables = {
@@ -416,7 +425,6 @@ resource "aws_lambda_function" "codebuild_trigger" {
   }
 
   source_code_hash = filebase64sha256("../../lambda.zip")
-  depends_on = [aws_cloudwatch_log_group.log_group]
 }
 
 resource "aws_lambda_permission" "s3_invoke" {
