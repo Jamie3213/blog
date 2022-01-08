@@ -228,18 +228,18 @@ resource "aws_iam_role_policy" "codebuild_iam_policy" {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "CreateAndPutLogStreams",
       "Effect": "Allow",
-      "Resource": "${aws_cloudwatch_log_group.log_group.arn}",
       "Action": [
         "logs:CreateLogStream",
         "logs:PutLogEvents"
-      ]
+      ],
+      "Resource": "${aws_cloudwatch_log_group.log_group.arn}"
     },
     {
+      "Sid": "S3LimitedBucketFullAccess",
       "Effect": "Allow",
-      "Action": [
-        "s3:*"
-      ],
+      "Action": "s3:*",
       "Resource": [
         "${aws_s3_bucket.release_bucket.arn}",
         "${aws_s3_bucket.release_bucket.arn}/*",
@@ -364,25 +364,24 @@ resource "aws_iam_role_policy" "lambda_iam_policy" {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "CreateAndPutLogStreams",
       "Effect": "Allow",
       "Action": [
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
-      "Resource": "${aws_cloudwatch_log_group.log_group.arn}"
+      "Resource": "${aws_cloudwatch_log_group.log_group.arn}:*"
     },
     {
+      "Sid": "GetBuildArtifacts",
       "Effect": "Allow",
-      "Action": [
-        "s3:GetObject"
-      ],
+      "Action": "s3:GetObject",
       "Resource": "${aws_s3_bucket.release_bucket.arn}/${var.config_file}"
     },
     {
+      "Sid": "StartCodeBuildProjects",
       "Effect": "Allow",
-      "Action": [
-        "codebuild:StartBuild"
-      ],
+      "Action": "codebuild:StartBuild",
       "Resource": "arn:aws:codebuild:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:project/deploy-jamie-${var.project}-*"
     }
   ]
