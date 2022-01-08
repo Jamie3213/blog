@@ -221,6 +221,7 @@ resource "aws_iam_role" "codebuild_iam_role" {
 }
 
 resource "aws_iam_role_policy" "codebuild_iam_policy" {
+  name = "policy-jamie-blog-codebuild"
   role = aws_iam_role.codebuild_iam_role.id
 
   policy = <<POLICY
@@ -234,12 +235,15 @@ resource "aws_iam_role_policy" "codebuild_iam_policy" {
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
-      "Resource": "${aws_cloudwatch_log_group.log_group.arn}"
+      "Resource": "${aws_cloudwatch_log_group.log_group.arn}:*"
     },
     {
-      "Sid": "S3LimitedBucketFullAccess",
+      "Sid": "S3PutAndGetObject",
       "Effect": "Allow",
-      "Action": "s3:*",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject"
+      ],
       "Resource": [
         "${aws_s3_bucket.release_bucket.arn}",
         "${aws_s3_bucket.release_bucket.arn}/*",
@@ -279,7 +283,7 @@ resource "aws_codebuild_project" "build" {
 
   artifacts {
     type      = "S3"
-    location  = aws_s3_bucket.redirect_bucket.bucket
+    location  = aws_s3_bucket.release_bucket.bucket
     name      = "build.zip"
     path      = "blog/site/"
     packaging = "ZIP"
@@ -357,6 +361,7 @@ resource "aws_iam_role" "lambda_iam_role" {
 }
 
 resource "aws_iam_role_policy" "lambda_iam_policy" {
+  name = "policy-jamie-blog-lambda-trigger"
   role = aws_iam_role.lambda_iam_role.name
 
   policy = <<POLICY
@@ -375,13 +380,17 @@ resource "aws_iam_role_policy" "lambda_iam_policy" {
     {
       "Sid": "GetBuildArtifacts",
       "Effect": "Allow",
-      "Action": "s3:GetObject",
+      "Action": [
+        "s3:GetObject"
+      ],
       "Resource": "${aws_s3_bucket.release_bucket.arn}/${var.config_file}"
     },
     {
       "Sid": "StartCodeBuildProjects",
       "Effect": "Allow",
-      "Action": "codebuild:StartBuild",
+      "Action": [
+        "codebuild:StartBuild"
+      ],
       "Resource": "arn:aws:codebuild:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:project/deploy-jamie-${var.project}-*"
     }
   ]
