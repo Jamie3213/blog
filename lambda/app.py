@@ -57,7 +57,7 @@ def lambda_handler(event: S3EventNotification, context: LambdaContext) -> Lambda
         return LambdaResponse(isBase64Encoded=False, statusCode=500, body=body)
 
     config = yaml.safe_load(config_binary)
-    
+
     change_file = event['Records'][0] \
         ['s3'] \
         ['object'] \
@@ -66,12 +66,13 @@ def lambda_handler(event: S3EventNotification, context: LambdaContext) -> Lambda
     base_folder = str.split(change_file, "/")[0]
     codebuild_project = config['Folder'][base_folder]
 
+    logger.info(f"Starting CodeBuild project '{codebuild_project}'")
     codebuild = boto3.client("codebuild")
     build = codebuild.start_build(projectName=codebuild_project)
     build_status = build['build']['buildStatus']
 
     if build_status not in ['SUCCEEDED', 'IN_PROGRESS']:
-        msg = f"Failed to CodeBuild project, build status returned '{build_status}'"
+        msg = f"Failed to CodeBuild project '{codebuild_project}', build status returned '{build_status}'"
         logger.error(msg)
         return LambdaResponse(isBase64Encoded=False, statusCode=500, body=json.dumps(msg))
     else:
