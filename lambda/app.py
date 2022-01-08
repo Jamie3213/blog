@@ -53,7 +53,7 @@ def lambda_handler(event: S3EventNotification, context: LambdaContext) -> Lambda
             .read()
     except ClientError:
         logger.error(traceback.format_exc())
-        body = json.dumps(f"Failed to read config file '{S3_OBJECT_KEY}' from bucket {S3_BUCKET_NAME}.")
+        body = json.dumps(f"Failed to read config file '{S3_OBJECT_KEY}' from bucket '{S3_BUCKET_NAME}'.")
         return LambdaResponse(isBase64Encoded=False, statusCode=500, body=body)
 
     config = yaml.safe_load(config_binary)
