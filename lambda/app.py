@@ -63,7 +63,7 @@ def lambda_handler(event: S3EventNotification, context: LambdaContext) -> Lambda
         ['object'] \
         ['key']
 
-    base_folder = str.split(change_file, "/")[0]
+    base_folder = str.split(change_file, "/")[1]
     codebuild_project = config['Folder'][base_folder]
 
     logger.info(f"Starting CodeBuild project '{codebuild_project}'")

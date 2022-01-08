@@ -299,6 +299,7 @@ resource "aws_lambda_function" "codebuild_trigger" {
     }
   }
 
+  source_code_hash = filebase64sha256("../../../lambda.zip")
   depends_on = [data.aws_cloudwatch_log_group.log_group]
 }
 
