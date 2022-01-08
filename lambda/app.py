@@ -56,14 +56,8 @@ def lambda_handler(event: S3EventNotification, context: LambdaContext) -> Lambda
         body = json.dumps(f"Failed to read config file '{S3_OBJECT_KEY}' from bucket {S3_BUCKET_NAME}.")
         return LambdaResponse(isBase64Encoded=False, statusCode=500, body=body)
 
-    logger.info("LoadingYAML config and extracting variables.")
-    try:
-        config = yaml.safe_load(config_binary)
-    except yaml.YAMLError:
-        logger.error(traceback.format_exc())
-        body = json.dumps("Failed to load config file YAML.")
-        return LambdaResponse(isBase64Encoded=False, statusCode=500, body=body)
-
+    config = yaml.safe_load(config_binary)
+    
     change_file = event['Records'][0] \
         ['s3'] \
         ['object'] \
