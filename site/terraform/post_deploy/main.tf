@@ -224,7 +224,7 @@ resource "aws_codebuild_project" "deploy" {
   }
 }
 
-resource "aws_cloudwatch_event_rule" "deploy_trigger" {
-  name        = "trigger-jamie-blog-deploy"
-  description = "Triggers the Blog deploy CodeBuild project when the build artifacts are updated."
-}
+# resource "aws_cloudwatch_event_rule" "deploy_trigger" {
+#   name        = "trigger-jamie-blog-deploy"
+#   description = "Triggers the Blog deploy CodeBuild project when the build artifacts are updated."
+# }
