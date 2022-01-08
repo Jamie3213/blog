@@ -61,7 +61,7 @@ def lambda_handler(event: S3EventNotification, context: LambdaContext) -> Lambda
     change_file = event['Records'][0] \
         ['s3'] \
         ['object'] \
-        ['key'] 
+        ['key']
 
     base_folder = str.split(change_file, "/")[0]
     codebuild_project = config['Folder'][base_folder]

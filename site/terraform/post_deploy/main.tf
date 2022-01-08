@@ -39,6 +39,11 @@ variable "log_group_name" {
   description = "The name of the CloudWatch Log Group that CodeBuild Log Streams should write to."
 }
 
+variable "config_file" {
+  type    = string
+  default = "config.yml"
+}
+
 /* -------------------------------- Providers ------------------------------- */
 
 provider "aws" {
@@ -72,8 +77,8 @@ data "aws_cloudwatch_log_group" "log_group" {
 
 /* -------------------------------- Resources ------------------------------- */
 
-resource "aws_iam_role" "iam_role" {
-  name = "iam-${data.aws_region.current.name}-dufrain-${var.project}-codebuild-service-role"
+resource "aws_iam_role" "codebuild_iam_role" {
+  name = "iam-${data.aws_region.current.name}-jamie-${var.project}-codebuild-service-role"
 
   assume_role_policy = <<EOF
 {
@@ -91,8 +96,8 @@ resource "aws_iam_role" "iam_role" {
 EOF
 }
 
-resource "aws_iam_role_policy" "iam_policy" {
-  role = aws_iam_role.iam_role.name
+resource "aws_iam_role_policy" "codebuild_iam_policy" {
+  role = aws_iam_role.codebuild_iam_role.name
 
   policy = <<POLICY
 {
@@ -129,7 +134,7 @@ resource "aws_codebuild_project" "build" {
   name           = "build-jamie-blog-site"
   description    = "Builds Hugo blog static files."
   source_version = "main"
-  service_role   = aws_iam_role.iam_role.arn
+  service_role   = aws_iam_role.codebuild_iam_role.arn
   build_timeout  = 5
   badge_enabled  = true
 
@@ -192,7 +197,7 @@ resource "aws_codebuild_project" "deploy" {
   name           = "deploy-jamie-blog-site"
   description    = "Deploy the static Hugo blog to Amazon S3."
   source_version = "main"
-  service_role   = aws_iam_role.iam_role.arn
+  service_role   = aws_iam_role.codebuild_iam_role.arn
   build_timeout  = 5
 
   source {
@@ -224,7 +229,96 @@ resource "aws_codebuild_project" "deploy" {
   }
 }
 
-# resource "aws_cloudwatch_event_rule" "deploy_trigger" {
-#   name        = "trigger-jamie-blog-deploy"
-#   description = "Triggers the Blog deploy CodeBuild project when the build artifacts are updated."
-# }
+resource "aws_iam_role" "lambda_iam_role" {
+  name = "iam-${data.aws_region.current.name}-jamie-${var.project}-lambda-trigger-codebuild"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Effect": "Allow"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "lambda_iam_policy" {
+  role = aws_iam_role.lambda_iam_role.name
+
+  policy = <<POLICY
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "${data.aws_cloudwatch_log_group.log_group.arn}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": "${data.aws_s3_bucket.artifact_bucket.arn}/${var.config_file}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "codebuild:StartBuild"
+      ],
+      "Resource": "arn:aws:codebuild:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:project/deploy-jamie-${var.project}-*"
+    }
+  ]
+}
+POLICY
+}
+
+resource "aws_lambda_function" "codebuild_trigger" {
+  filename      = "../../../lambda.zip"
+  function_name = "lambda-jamie-blog-trigger-deployment"
+  handler       = "app.lambda_handler"
+  role          = aws_iam_role.lambda_iam_role.arn
+  runtime       = "python3.9"
+  architectures = ["arm64"]
+  memory_size   = 128
+  description   = "Triggers CodeBuild build projects based on S3 change events."
+
+  environment {
+    variables = {
+      S3_BUCKET_NAME = data.aws_s3_bucket.artifact_bucket.id
+      S3_OBJECT_KEY  = var.config_file
+    }
+  }
+
+  depends_on = [data.aws_cloudwatch_log_group.log_group]
+}
+
+resource "aws_lambda_permission" "s3_invoke" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.codebuild_trigger.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = data.aws_s3_bucket.artifact_bucket.arn
+}
+
+resource "aws_s3_bucket_notification" "bucket_notification" {
+  bucket = data.aws_s3_bucket.artifact_bucket.id
+
+  lambda_function {
+    id                  = "trigger-codebuild-event-lambda"
+    lambda_function_arn = aws_lambda_function.codebuild_trigger.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "blog/"
+  }
+
+  depends_on = [aws_lambda_permission.s3_invoke]
+}
