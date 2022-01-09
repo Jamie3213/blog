@@ -216,7 +216,7 @@ resource "aws_route53_record" "redirect_record" {
 /* ---------------------------------- CI/CD --------------------------------- */
 
 resource "aws_iam_role" "codebuild_iam_role" {
-  name = "iam-${data.aws_region.current.name}-jamie-${var.project}-codebuild-service-role"
+  name               = "iam-${data.aws_region.current.name}-jamie-${var.project}-codebuild-service-role"
   assume_role_policy = file("policies/codebuild_assume_role.json")
 }
 
@@ -232,6 +232,7 @@ resource "aws_iam_role_policy" "codebuild_iam_policy" {
       "Sid": "CreateAndPutLogStreams",
       "Effect": "Allow",
       "Action": [
+        "logs:CreateLogGroup",
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
