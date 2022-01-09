@@ -232,7 +232,6 @@ resource "aws_iam_role_policy" "codebuild_iam_policy" {
       "Sid": "CreateAndPutLogStreams",
       "Effect": "Allow",
       "Action": [
-        "logs:CreateLogGroup",
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
@@ -393,6 +392,7 @@ resource "aws_iam_role_policy" "lambda_iam_policy" {
       "Sid": "CreateAndPutLogStreams",
       "Effect": "Allow",
       "Action": [
+        "logs:CreateLogGroup",
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
