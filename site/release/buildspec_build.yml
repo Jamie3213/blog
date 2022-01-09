@@ -15,4 +15,4 @@ phases:
       - hugo -D
 artifacts:
   files:
-    - site/app/public/*
+    - site/app/public/**/*
