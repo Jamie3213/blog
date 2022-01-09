@@ -7,9 +7,10 @@ phases:
       - wget https://github.com/gohugoio/hugo/releases/download/v0.91.2/hugo_0.91.2_Linux-64bit.deb
       - dpkg -i hugo_0.91.2_Linux-64bit.deb
       - apt-get -y install
-  # build:
-  #   commands:
-  #     - echo Build started on `date`
-  #     - echo Building website...
-  #     - cd site/app
-  #     - hugo -D
+  build:
+    commands:
+      - echo Deployment started on `date`
+      - echo Downloading build artifacts...
+      - s3 cp s3://$S3_BUILD_BUCKET/blog/site/build.zip .
+      - unzip build.zip -d build
+      - s3 cp --recursive build/public s3://$S3_DEPLOY_BUCKET

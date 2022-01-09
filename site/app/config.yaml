@@ -39,7 +39,7 @@ params:
   showPowerBy: true
 
 # Deployment
-deployment:
-  targets:
-    - name: aws-s3-deploy
-      URL: s3://www.jamiehargreaves.co.uk?region=eu-west-1
+# deployment:
+#   targets:
+#     - name: aws-s3-deploy
+#       URL: s3://www.jamiehargreaves.co.uk?region=eu-west-1

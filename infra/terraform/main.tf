@@ -349,6 +349,18 @@ resource "aws_codebuild_project" "deploy" {
     compute_type = "BUILD_GENERAL1_SMALL"
     image        = "aws/codebuild/standard:5.0"
     type         = "LINUX_CONTAINER"
+
+    environment_variable {
+      name  = "S3_BUILD_BUCKET"
+      type  = "PLAINTEXT"
+      value = aws_s3_bucket.release_bucket.bucket
+    }
+
+    environment_variable {
+      name  = "S3_DEPLOY_BUCKET"
+      type  = "PLAINTEXT"
+      value = aws_s3_bucket.primary_bucket.bucket
+    }
   }
 
   artifacts {
