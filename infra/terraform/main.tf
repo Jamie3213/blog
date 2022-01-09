@@ -420,7 +420,7 @@ POLICY
 }
 
 resource "aws_lambda_function" "codebuild_trigger" {
-  filename      = "../../lambda.zip"
+  filename      = "../lambda.zip"
   function_name = "lambda-jamie-blog-trigger-deployment"
   handler       = "app.lambda_handler"
   role          = aws_iam_role.lambda_iam_role.arn
@@ -437,7 +437,7 @@ resource "aws_lambda_function" "codebuild_trigger" {
     }
   }
 
-  source_code_hash = filebase64sha256("../../lambda.zip")
+  source_code_hash = filebase64sha256("../lambda.zip")
 }
 
 resource "aws_lambda_permission" "s3_invoke" {
