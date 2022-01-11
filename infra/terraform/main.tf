@@ -381,7 +381,7 @@ resource "aws_iam_role" "eventbridge_iam_role" {
 }
 
 resource "aws_iam_role_policy" "eventbridge_iam_policy" {
-  name = "policy-jamie-blog-codebuild"
+  name = "policy-jamie-blog-eventbridge"
   role = aws_iam_role.eventbridge_iam_role.id
 
   policy = <<POLICY
