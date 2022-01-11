@@ -11,6 +11,6 @@ phases:
     commands:
       - echo Deployment started on `date`
       - echo Downloading build artifacts...
-      - aws s3 cp s3://$S3_BUILD_BUCKET/blog/site/build.zip .
+      - aws s3 cp s3://$S3_BUILD_BUCKET/blog/build.zip .
       - unzip build.zip -d build
       - aws s3 cp --recursive build/site/app/public s3://$S3_DEPLOY_BUCKET
