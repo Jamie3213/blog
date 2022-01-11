@@ -4,6 +4,7 @@ title: Jamie Hargreaves
 theme: mini
 
 defaultContentLanguage: en
+enableEmoji: true
 
 hasCJKLanguage: true
 permalinks:
