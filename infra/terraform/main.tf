@@ -5,6 +5,12 @@ terraform {
       version = "~> 3.0"
     }
   }
+
+  backend "s3" {
+    bucket = "s3-jamie-general-config"
+    key    = "blog/terraform.state"
+    region = "eu-west-1"
+  }
 }
 
 /* ----------------------------- Input variables ---------------------------- */
@@ -22,11 +28,6 @@ variable "project" {
 variable "created_by" {
   type        = string
   description = "The name of the user who created the resource."
-}
-
-variable "config_file" {
-  type    = string
-  default = "config.yml"
 }
 
 /* -------------------------------- Providers ------------------------------- */
@@ -70,7 +71,6 @@ data "aws_route53_zone" "hosted_zone" {
 # S3 buckets
 resource "aws_s3_bucket" "primary_bucket" {
   bucket  = "www.jamiehargreaves.co.uk"
-  acl     = "public-read"
   policy  = file("policies/s3_public_get_object.json")
 
   website {
