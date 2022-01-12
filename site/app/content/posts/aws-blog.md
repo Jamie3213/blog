@@ -51,7 +51,7 @@ As such, if you're mostly interested in quickly getting something up and running
 
 The basic structure we're going to use for the project is as follows:
 
-```console
+```zsh
 ├── infra
 └── site
     ├── app
@@ -60,7 +60,7 @@ The basic structure we're going to use for the project is as follows:
 
 I won't go over the steps to install Hugo and set up a new site since I'd just be re-hashing what's already covered in the [Quick-Start guide](https://gohugo.io/getting-started/quick-start), so if you are using Hugo, have a read through the guide and you should be up and running with a new site in a few minutes. Once you have everything ready, you can use the following commands to test the site:
 
-```console
+```zsh
 # Build static content
 hugo
 
@@ -109,23 +109,29 @@ We'll need to use several Identity and Access Management (IAM) roles in order to
 
 In order to deploy a CI/CD pipeline, we'll also need to use things like AWS CodeBuild projects and Amazon EventBridge rules. Again though, we'll talk about these when we come to building the pipeline. If you don't want a CI/CD pipeline, you can happily ignore these resources and deploy new posts manually - if you do choose to go down that route, you also won't need an S3 bucket store build artifacts.
 
-### Infrastructure as Code
+### Resource Naming Conventions
 
-As I mentioned at the start of the post, I'm going to deploy all the resources into AWS using an infrastructure-as-code approach, rather than manually going into the Management Console and deploying the resources. This isn't strictly necessary for a project of this size, but I find it's much cleaner to have all of my resources version controlled as code and much safer if I need to make changes as I'll be able to see the impact of those changes on my resources before I actually deploy them (plus, I think it's a good habit to get into).
+Throughout the post, I'm going to adopt a fairly standard approach to resource naming which will be as follows:
 
-I've chosen Terraform to deploy the resources (have a look [here](https://learn.hashicorp.com/collections/terraform/aws-get-started) if you're not familiar), but there's no reason you couldn't use [AWS CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html) for this. In general though, I think CloudFormation is overly verbose and often poorly documented (though that's just my personal opinion). In addition, there are also limitations around deploying resources into different regions within CloudFormation stacks (which can be achieved using [StackSets](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/what-is-cfnstacksets.html)), but then being able to reference the attributes (e.g. the resource ARN), of the resource within that same stack - Terraform doesn't have this limitation.
+```zsh
+<resource_abbreviation>-<organisation>-<project>-<description>
+```
 
-Before we actually start with any Terraform though, we need to deploy a Hosted Zone and, again, this needs to be done upfront because my domain is registered outside of AWS, which means once my Hosted Zone is set up, I need to configure the Name Servers for my domain through the IONOS portal. We'll provision a Hosted Zone using the AWS CLI (see the [Getting Started](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) guide if you don't have this set up), and we'll use our base domain for the Hosted Zone name (the caller reference just needs to a unique string, hence why I'm using the current date-time):
+### Pre-Requisite Resources
 
-```console
+Before we actually start writing any code, we need to deploy two resources; firstly, a Hosted Zone and secondly, an S3 bucket to hold configuration type data.
+
+Let's start with the Hosted Zone and, again, this needs to be done upfront because my domain is registered outside of AWS, which means once my Hosted Zone is set up, I need to configure the Name Servers for my domain through the IONOS portal. We'll provision a Hosted Zone using the AWS CLI (see the [Getting Started](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) guide if you don't have this set up), and we'll use our base domain for the Hosted Zone name (the caller reference just needs to a unique string, hence why I'm using the current date-time):
+
+```zsh
 aws route53 create-hosted-zone \
---name jamiehargreaves.co.uk
+--name jamiehargreaves.co.uk \
 --caller-reference $(echo date)
 ```
 
 Now that it's set up, we need the Name Server addresses which can then be used to update my IONOS Name Server settings. To do this we need to get the ID of the Hosted Zone we just created (you don't need to use [JQ](https://stedolan.github.io/jq/) here but I like to use it since it formats JSON responses nicely):
 
-```console
+```zsh
 aws route53 list-hosted-zones | jq
 ```
 
@@ -150,10 +156,10 @@ This will return an array of Hosted Zones that looks something like:
 
 We can pull out the Hosted Zone ID in order to take a look at its associated Name Servers:
 
-```console
+```zsh
 aws route53 get-hosted-zone \
---id /hostedzone/Z0827073DSZEQ2F7K5PK \
-| jq '.DelegationSet.NameServers'
+--id /hostedzone/Z0827073DSZEQ2F7K5PK | \
+jq '.DelegationSet.NameServers'
 ```
 
 This returns an array of Name Server addresses:
@@ -169,7 +175,31 @@ This returns an array of Name Server addresses:
 
 The configuration of these will depend on where your domain is registered, so you'll need to look into how to do this for whatever provider you've used. If your domain is registered through Route 53, then a Hosted Zone will already have been created and configured for you as part of the registration process.
 
-Now that's out of the way, we can start defining the rest of our resources. I'll do this within a single `main.tf` file within the `infra` folder. We'll start by defining the main AWS provider and a couple of input variables whose values we'll provide when we deploy the resources. We'll also enforce that the `project` reference only use lowercase characters (I think this looks nicer in resource names):
+Next we'll deploy the S3 bucket (again using the CLI); since we're using it for configuration data - specifically, to store our Terraform state which I'll discuss later - I'm going to make the bucket versioned:
+
+```zsh
+# Create bucket
+aws s3api create-bucket \
+--bucket s3-jamie-general-config \
+--create-bucket-configuration '{"LocationConstraint": "eu-west-1"}'
+
+# Enable versioning
+aws s3api put-bucket-versioning \
+--bucket s3-jamie-general-config \
+--versioning-configuration '{"Status": "Enabled"}'
+```
+
+### Infrastructure as Code
+
+As I mentioned at the start of the post, I'm going to deploy all the resources into AWS using an infrastructure-as-code approach, rather than manually going into the Management Console and deploying the resources. This isn't strictly necessary for a project of this size, but I find it's much cleaner to have all of my resources version controlled as code and much safer if I need to make changes as I'll be able to see the impact of those changes on my resources before I actually deploy them (plus, I think it's a good habit to get into).
+
+I've chosen Terraform to deploy the resources (have a look [here](https://learn.hashicorp.com/collections/terraform/aws-get-started) if you're not familiar), but there's no reason you couldn't use [AWS CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html) for this. In general though, I think CloudFormation is overly verbose and often poorly documented (though that's just my personal opinion). In addition, there are also limitations around deploying resources into different regions within CloudFormation stacks (which can be achieved using [StackSets](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/what-is-cfnstacksets.html)), but then being able to reference the attributes (e.g. the resource ARN), of the resource within that same stack - Terraform doesn't have this limitation.
+
+Now that's out of the way, we can start defining the rest of our resources. I'll do this within a single `main.tf` file within the `infra` folder. We'll start by defining the main AWS provider and a couple of input variables whose values we'll provide when we deploy the resources. We'll also enforce that the `project` reference only use lowercase characters (I think this looks nicer in resource names).
+
+| :exclamation: Important |
+|----------------------------------------------------------------------------------|
+A really crucial thing to note here is the use of the `backend` block within the top level `terraform` definition. Terraform stores the state of your deployed resources in a configuration file which, by default is stored locally. The problem here is that if anything happens to your state file (e.g. you accidentally delete it), you can end up with orphaned resources that are no longer registered as remote resources with Terraform. Whilst you could version control this file, this risks compromising sensitive data that Terraform may store in plain text in the state file. For this reason, you should always store your state remotely, in this case in a versioned S3 bucket, and this is the purpose of the `backend` block.
 
 ```tf
 # Provider
@@ -179,6 +209,12 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 3.0"
     }
+  }
+
+  backend "s3" {
+    bucket = "s3-jamie-general-config"
+    key    = "blog/terraform.state"
+    region = "eu-west-1"
   }
 }
 
@@ -232,7 +268,6 @@ Next we need to define our S3 buckets. The primary bucket that will be used to s
 # S3 buckets
 resource "aws_s3_bucket" "primary_bucket" {
   bucket  = "www.jamiehargreaves.co.uk"
-  acl     = "public-read"
   policy  = file("policies/s3_public_get_object.json")
 
   website {
@@ -259,7 +294,7 @@ resource "aws_s3_bucket" "release_bucket" {
 }
 ```
 
-Here, we've assigned our `primary_bucket` resource the `public-read` Access Control List ([ACL](https://docs.aws.amazon.com/AmazonS3/latest/userguide/acl-overview.html)) as well as an IAM policy stored in a `policies` sub-folder defined as:
+Here, we've assigned our `primary_bucket` an IAM policy stored in the `policies` sub-folder which allows anonymous public read access to all bucket objects (you can read more about policy definitions in the [documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html)):
 
 ```json
 {
@@ -275,5 +310,3 @@ Here, we've assigned our `primary_bucket` resource the `public-read` Access Cont
     ]
 }
 ```
-
-The above IAM policy allows anonymous read access to any objects contained within the ```www.jamiehargreaves.co.uk``` bucket.
