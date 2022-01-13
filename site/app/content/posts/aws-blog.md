@@ -1,6 +1,6 @@
 +++
 author = "Jamie Hargreaves"
-title = "Static Blogging with AWS"
+title = "Blogging with AWS, Hugo and Terraform"
 date = "2022-01-11"
 description = "Deploying a static blog using Hugo and AWS."
 tags = [
@@ -83,7 +83,7 @@ Let's establish the resources we're going to need to deploy.
 
 #### S3 Buckets
 
-We already mentioned that we'll be hosting the site on S3, so we're going to need to two buckets for that, one with the `www` prefix and one without, as well as a bucket to store logs from requests made to our site and a bucket to store build artifacts from the CI/CD pipeline we'll be building.
+We already mentioned that we'll be hosting the site on S3, so we're going to need to two buckets for that, one with the `www` prefix and one without, as well as a bucket to store logs from requests made to our site, a bucket to store build artifacts from the CI/CD pipeline we'll be building and a bucket to store configuration files (namely, our Terraform state).
 
 #### Hosted Zone
 
@@ -107,7 +107,7 @@ We'll need to use several Identity and Access Management (IAM) roles in order to
 
 #### CodeBuild Projects and EventBridge Rules
 
-In order to deploy a CI/CD pipeline, we'll also need to use things like AWS CodeBuild projects and Amazon EventBridge rules. Again though, we'll talk about these when we come to building the pipeline. If you don't want a CI/CD pipeline, you can happily ignore these resources and deploy new posts manually - if you do choose to go down that route, you also won't need an S3 bucket store build artifacts.
+In order to deploy a CI/CD pipeline, we'll also need to use things like AWS CodeBuild projects and Amazon EventBridge rules. Again though, we'll talk about these when we come to building the pipeline. If you don't want a CI/CD pipeline, you can happily ignore these resources and deploy new posts manually - if you do choose to go down that route, you also won't need an S3 bucket to store build artifacts.
 
 ### Resource Naming Conventions
 
@@ -119,9 +119,9 @@ Throughout the post, I'm going to adopt a fairly standard approach to resource n
 
 ### Pre-Requisite Resources
 
-Before we actually start writing any code, we need to deploy two resources; firstly, a Hosted Zone and secondly, an S3 bucket to hold configuration type data.
+Before we actually start writing any code, we need to deploy two resources; firstly, a Hosted Zone and secondly, an S3 bucket to hold configuration files.
 
-Let's start with the Hosted Zone and, again, this needs to be done upfront because my domain is registered outside of AWS, which means once my Hosted Zone is set up, I need to configure the Name Servers for my domain through the IONOS portal. We'll provision a Hosted Zone using the AWS CLI (see the [Getting Started](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) guide if you don't have this set up), and we'll use our base domain for the Hosted Zone name (the caller reference just needs to a unique string, hence why I'm using the current date-time):
+Let's start with the Hosted Zone and, again, this needs to be done upfront because my domain is registered outside of AWS, which means once my Hosted Zone is set up, I need to configure the Name Servers for my domain through the IONOS portal. We'll provision a Hosted Zone using the AWS CLI (see the [Getting Started](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) guide if you don't have this set up), and we'll use our base domain for the Hosted Zone name (the caller reference just needs to be a unique string, hence why I'm using the current date-time):
 
 ```zsh
 aws route53 create-hosted-zone \
@@ -189,7 +189,7 @@ aws s3api put-bucket-versioning \
 --versioning-configuration '{"Status": "Enabled"}'
 ```
 
-### Infrastructure as Code
+### Infrastructure-as-Code
 
 As I mentioned at the start of the post, I'm going to deploy all the resources into AWS using an infrastructure-as-code approach, rather than manually going into the Management Console and deploying the resources. This isn't strictly necessary for a project of this size, but I find it's much cleaner to have all of my resources version controlled as code and much safer if I need to make changes as I'll be able to see the impact of those changes on my resources before I actually deploy them (plus, I think it's a good habit to get into).
 
@@ -199,7 +199,7 @@ Now that's out of the way, we can start defining the rest of our resources. I'll
 
 | :exclamation: Important |
 |----------------------------------------------------------------------------------|
-A really crucial thing to note here is the use of the `backend` block within the top level `terraform` definition. Terraform stores the state of your deployed resources in a configuration file which, by default is stored locally. The problem here is that if anything happens to your state file (e.g. you accidentally delete it), you can end up with orphaned resources that are no longer registered as remote resources with Terraform. Whilst you could version control this file, this risks compromising sensitive data that Terraform may store in plain text in the state file. For this reason, you should always store your state remotely, in this case in a versioned S3 bucket, and this is the purpose of the `backend` block.
+A really crucial thing to note here is the use of the `backend` block within the top level `terraform` definition. Terraform stores the state of your deployed resources in a configuration file which, by default, is stored locally. The problem here is that if anything happens to your state file (e.g. you accidentally delete it), you can end up with orphaned resources that are no longer registered as remote resources with Terraform. Whilst you could version control this file, this risks compromising sensitive data that Terraform may store in plain text in the state file. For this reason, you should always store your state remotely, in this case in a versioned S3 bucket, and this is the purpose of the `backend` block.
 
 ```tf
 # Provider
@@ -310,3 +310,155 @@ Here, we've assigned our `primary_bucket` an IAM policy stored in the `policies`
     ]
 }
 ```
+
+Next we'll create Log Group; this essentially acts as a container within CloudWatch to hold various Log Streams (these are specified within individual resource configurations):
+
+```tf
+resource "aws_cloudwatch_log_group" "log_group" {
+  name = "/aws/jamie/${var.project}"
+}
+```
+
+We covered the importance of using an SSL certificate in order to enforce HTTPS, so we'll deploy that next. It's worth noting that the `subject_alternative_name` argument here only contains a reference to the redirect bucket since the domain name reference is the fully prefixed version. If we reference both of these domains as alternative names, then the duplicate one will be automatically ignored by AWS in the deployment which means Terraform will detect drift between the resource definition and the actual resource any time we run an apply command, even though nothing has actually changed. In addition, note that I'm using the aliased `useast` provider here, since certificates needs to be provisioned in `us-east-1` in order to work with CloudFront.
+
+```tf
+resource "aws_acm_certificate" "cert" {
+  provider                  = aws.useast
+  domain_name               = aws_s3_bucket.primary_bucket.bucket
+  validation_method         = "DNS"
+  subject_alternative_names = [aws_s3_bucket.redirect_bucket.bucket]
+ }
+```
+
+Now that we have an SSL certificate set up, we need to go through the DNS validation process. You can read more in the [documentation](https://docs.aws.amazon.com/acm/latest/userguide/dns-validation.html) about how DNS validation works, but the TLDR version is that this process is how AWS establishes that you own your domain.
+
+```tf
+resource "aws_route53_record" "cnames" {
+  for_each = {
+    for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  name    = each.value.name
+  records = [each.value.record]
+  ttl     = 60
+  type    = each.value.type
+  zone_id = data.aws_route53_zone.hosted_zone.zone_id
+}
+
+resource "aws_acm_certificate_validation" "cert_validation" {
+  provider                = aws.useast
+  certificate_arn         = aws_acm_certificate.cert.arn
+  validation_record_fqdns = [for record in aws_route53_record.cnames : record.fqdn]
+}
+```
+
+If the Terraform looping consruct above looks unfamilar to you, have a look at the [documentation](https://www.terraform.io/language/expressions/for) to see some examples, but essentially all we're doing here is accessing the `domain_validation_options` output from the SSL certificate resource we created previously and adding the Canonical Name (CNAME) records to our Hosted Zone in Route 53 to validate the SSL certificate we created.
+
+Next, we need to add the CloudFront distribution itself. This resource probably requires the most configuration out of all of our resources, however the main things we're doing here are:
+
+* Pointing CloudFront to the base S3 bucket which will contain our web content.
+* Specifying some caching behaviour and enforcing that all traffic be redirected to HTTPS.
+* Telling CloudFront where to store site activity logs.
+* Specifying the aliases for the Distribution (i.e. the base domain and prefixed domain).
+* Telling CloudFront which SSL certificate to use.
+
+```tf
+resource "aws_cloudfront_distribution" "distribution" {
+  origin {
+    origin_id   = "Primary"
+    domain_name = aws_s3_bucket.primary_bucket.website_endpoint
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  default_cache_behavior {
+    allowed_methods  = ["GET", "HEAD"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "Primary"
+    viewer_protocol_policy = "redirect-to-https"
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+
+  logging_config {
+    bucket          = aws_s3_bucket.logs_bucket.bucket_domain_name
+    include_cookies = false
+    prefix          = "blog/"
+  }
+
+  enabled         = true
+  is_ipv6_enabled = true
+  http_version    = "http2"
+  price_class     = "PriceClass_All"
+
+  aliases = [
+    aws_s3_bucket.primary_bucket.bucket,
+    aws_s3_bucket.redirect_bucket.bucket
+  ]
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = aws_acm_certificate.cert.arn
+    minimum_protocol_version = "TLSv1.2_2021"
+    ssl_support_method       = "sni-only"
+  }
+}
+```
+
+The last thing we need to do before we have all the resources we need to have a fully functioning static website (minus any CI/CD), is to define two last records in our Hosted Zone in Route 53 which point to our new CloudFront distribution:
+
+```tf
+resource "aws_route53_record" "primary_record" {
+  zone_id = data.aws_route53_zone.hosted_zone.zone_id
+  name    = aws_s3_bucket.primary_bucket.bucket
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.distribution.hosted_zone_id
+    evaluate_target_health = true
+  }
+}
+
+resource "aws_route53_record" "redirect_record" {
+  zone_id = data.aws_route53_zone.hosted_zone.zone_id
+  name    = ""
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.distribution.hosted_zone_id
+    evaluate_target_health = true
+  }
+}
+```
+
+In theory we can now run `terraform init` and `terraform apply` to deploy our resources, then push our Hugo site to S3 and everything should work. If you're happy to do that and to leave out any deployment pipelines, then that's exactly what you can do, otherwise, we'll add some more resources before we stop.
+
+### Adding a CI/CD Pipeline
+
+Before we add any more code, let's look at how the CI/CD pipeline will work. I'm storing all of my source code in GitHub, so what I'd like is for any commits to my `main` branch (generally, a merged Pull Request after I've written a post on a development branch), to trigger AWS to build all my static files and deploy them to S3 reliably without me having to do anything. For Hugo, this is arguably a bit unnecessary since [Hugo already supports some very simple cloud deployment](https://gohugo.io/hosting-and-deployment/hugo-deploy/), however if you're using a more general framework (like React), then this might be useful (plus it's more fun).
+
+To achieve this we're going to use a solution described in the below diagram:
+
+

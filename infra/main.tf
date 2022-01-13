@@ -97,7 +97,7 @@ resource "aws_s3_bucket" "release_bucket" {
 }
 
 resource "aws_cloudwatch_log_group" "log_group" {
-  name = "/aws/jamie/blog"
+  name = "/aws/jamie/${var.project}"
 }
 
  # SSL ccertificate and validation
