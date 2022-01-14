@@ -1,20 +1,18 @@
 +++
 author = "Jamie Hargreaves"
-title = "Blogging with AWS, Hugo and Terraform"
+title = "Blogging with AWS - Part 1: Building the Blog"
 date = "2022-01-11"
-description = "Deploying a static blog using Hugo and AWS."
+description = "Deploying a static blog using AWS, Hugo and Terraform."
 tags = [
     "aws",
     "amazon s3",
     "amazon cloudfront",
     "amazon route 53",
     "aws codebuild",
-    "aws eventbridge",
     "amazon certificate manager",
     "hugo",
     "markdown",
-    "terraform",
-    "ci/cd"
+    "terraform"
 ]
 +++
 
@@ -22,7 +20,7 @@ tags = [
 
 ## Overview
 
-This post walks through the process of building and deploying a static blog (or any static website, for that matter), using [Hugo](https://gohugo.io), and AWS services like Amazon S3 and CloudFront. In addition, it shows how to utilise [Terraform](https://www.terraform.io) to deploy the necessary AWS resources as code, along with a walk-through of an automated CI/CD pipeline using AWS CodeBuild for deploying new posts or changes to the website.
+This post walks through the process of building and deploying a static blog (or any static website, for that matter), using [Hugo](https://gohugo.io), and AWS services like Amazon S3 and CloudFront, as well as showing how to utilise [Terraform](https://www.terraform.io) to deploy the necessary AWS resources as code. In Part 2, we'll look at how to implement a CI/CD pipeline in AWS using a monorepo approach.
 
 Before we get into things, you can find the full source code for this blog [on GitHub](https://github.com/Jamie3213/blog).
 
@@ -49,7 +47,7 @@ As such, if you're mostly interested in quickly getting something up and running
 
 ### Building the Blog
 
-The basic structure we're going to use for the project is as follows:
+The basic structure we're going to use for the project is as follows (though if you look in the GitHub repo, things will look slightly different since I've implement a CI/CD pipeline to along with this; again, see Part 2 for more details):
 
 ```zsh
 ├── infra
@@ -71,9 +69,7 @@ hugo -D
 hugo server
 ```
 
-## Setting Up AWS Resources
-
-### Getting a Domain
+## Getting a Domain
 
 The first thing you'll need is a domain for your site and you can buy one from several places - I bought mine from [IONOS](https://www.ionos.co.uk), however you can also [purchase a domain directly through AWS](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/domain-register.html) using Amazon Route 53.
 
@@ -83,15 +79,11 @@ Let's establish the resources we're going to need to deploy.
 
 #### S3 Buckets
 
-We already mentioned that we'll be hosting the site on S3, so we're going to need to two buckets for that, one with the `www` prefix and one without, as well as a bucket to store logs from requests made to our site, a bucket to store build artifacts from the CI/CD pipeline we'll be building and a bucket to store configuration files (namely, our Terraform state).
+We already mentioned that we'll be hosting the site on S3, so we're going to need to two buckets for that, one with the `www` prefix and one without, as well as a bucket to store logs from requests made to our site and a bucket to store configuration files (namely, our Terraform state).
 
 #### Hosted Zone
 
 A hosted zone is a sub-service of Route 53 that we'll use to determine how requests to our site are routed.
-
-#### Log Group
-
-We'll use a CloudWatch Log Group to store all of the logs from things like our CI/CD pipeline.
 
 #### SSL Certificate
 
@@ -105,10 +97,6 @@ The CloudFront Distribution is the resource we'll use in order to cache our stat
 
 We'll need to use several Identity and Access Management (IAM) roles in order to allow various resources to interact with one another and with other AWS services in a secure way, and I'll explain the permissions we're giving each role as we deploy them.
 
-#### CodeBuild Projects and EventBridge Rules
-
-In order to deploy a CI/CD pipeline, we'll also need to use things like AWS CodeBuild projects and Amazon EventBridge rules. Again though, we'll talk about these when we come to building the pipeline. If you don't want a CI/CD pipeline, you can happily ignore these resources and deploy new posts manually - if you do choose to go down that route, you also won't need an S3 bucket to store build artifacts.
-
 ### Resource Naming Conventions
 
 Throughout the post, I'm going to adopt a fairly standard approach to resource naming which will be as follows:
@@ -117,7 +105,7 @@ Throughout the post, I'm going to adopt a fairly standard approach to resource n
 <resource_abbreviation>-<organisation>-<project>-<description>
 ```
 
-### Pre-Requisite Resources
+## Pre-Requisite Resources
 
 Before we actually start writing any code, we need to deploy two resources; firstly, a Hosted Zone and secondly, an S3 bucket to hold configuration files.
 
@@ -189,7 +177,7 @@ aws s3api put-bucket-versioning \
 --versioning-configuration '{"Status": "Enabled"}'
 ```
 
-### Infrastructure-as-Code
+## Infrastructure-as-Code
 
 As I mentioned at the start of the post, I'm going to deploy all the resources into AWS using an infrastructure-as-code approach, rather than manually going into the Management Console and deploying the resources. This isn't strictly necessary for a project of this size, but I find it's much cleaner to have all of my resources version controlled as code and much safer if I need to make changes as I'll be able to see the impact of those changes on my resources before I actually deploy them (plus, I think it's a good habit to get into).
 
@@ -288,13 +276,9 @@ resource "aws_s3_bucket" "logs_bucket" {
   bucket = "s3-jamie-general-logs"
   acl    = "log-delivery-write"
 }
-
-resource "aws_s3_bucket" "release_bucket" {
-  bucket = "s3-jamie-general-release-artifacts"
-}
 ```
 
-Here, we've assigned our `primary_bucket` an IAM policy stored in the `policies` sub-folder which allows anonymous public read access to all bucket objects (you can read more about policy definitions in the [documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html)):
+Here, we've assigned our `primary_bucket` an IAM policy stored in an `infra/policies` sub-folder which allows anonymous public read access to all bucket objects (you can read more about policy definitions in the [documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html)):
 
 ```json
 {
@@ -308,14 +292,6 @@ Here, we've assigned our `primary_bucket` an IAM policy stored in the `policies`
             "Resource": "arn:aws:s3:::www.jamiehargreaves.co.uk/*"
         }
     ]
-}
-```
-
-Next we'll create Log Group; this essentially acts as a container within CloudWatch to hold various Log Streams (these are specified within individual resource configurations):
-
-```tf
-resource "aws_cloudwatch_log_group" "log_group" {
-  name = "/aws/jamie/${var.project}"
 }
 ```
 
@@ -425,7 +401,7 @@ resource "aws_cloudfront_distribution" "distribution" {
 }
 ```
 
-The last thing we need to do before we have all the resources we need to have a fully functioning static website (minus any CI/CD), is to define two last records in our Hosted Zone in Route 53 which point to our new CloudFront distribution:
+The last thing we need to do before we have all the resources we need to have a fully functioning static website is to define two last records in our Hosted Zone in Route 53 which point to our new CloudFront distribution:
 
 ```tf
 resource "aws_route53_record" "primary_record" {
@@ -453,12 +429,49 @@ resource "aws_route53_record" "redirect_record" {
 }
 ```
 
-In theory we can now run `terraform init` and `terraform apply` to deploy our resources, then push our Hugo site to S3 and everything should work. If you're happy to do that and to leave out any deployment pipelines, then that's exactly what you can do, otherwise, we'll add some more resources before we stop.
+In theory we can now run `terraform init` and `terraform apply` to deploy our resources, then push our Hugo site to S3 and everything should work. If you're happy to do that and to leave out any deployment pipelines, then that's exactly what you can do. From within the `infra/terraform` folder, run `terraform init`, then run (substituting your `project` and `created_by` values as appropriate):
 
-### Adding a CI/CD Pipeline
+```zsh
+terraform apply \
+-var project=blog \
+-var created_by=jamie \
+-auto-approve
+```
 
-Before we add any more code, let's look at how the CI/CD pipeline will work. I'm storing all of my source code in GitHub, so what I'd like is for any commits to my `main` branch (generally, a merged Pull Request after I've written a post on a development branch), to trigger AWS to build all my static files and deploy them to S3 reliably without me having to do anything. For Hugo, this is arguably a bit unnecessary since [Hugo already supports some very simple cloud deployment](https://gohugo.io/hosting-and-deployment/hugo-deploy/), however if you're using a more general framework (like React), then this might be useful (plus it's more fun).
+To deploy your static site to S3, just add a deplyoment section to your `config.yml`:
 
-To achieve this we're going to use a solution described in the below diagram:
+```yml
+deployment:
+  targets:
+    - name: aws-s3-deploy
+      URL: s3://www.jamiehargreaves.co.uk?region=eu-west-1
+      cloudFrontDistributionID: EAWN7FFX2G2YW
+```
 
+Alternatively, if you're using a TOML config:
 
+```toml
+[deployment]
+[[deployment.targets]]
+name = "aws-s3-deploy"
+URL = "s3://www.jamiehargreaves.co.uk?region=eu-west-1"
+cloudFrontDistributionID = "EAWN7FFX2G2YW"
+```
+
+Note that we've included the CloudFront distribution ID here which causes Hugo to invalidate any currently cached files - you can read more about the cost implications of CloudFront path invalidation [here](https://aws.amazon.com/premiumsupport/knowledge-center/cloudfront-serving-outdated-content-s3/). You can get the ID through the CLI:
+
+```zsh
+aws cloudfront list-distributions | jq
+```
+
+This will return a fairly large JSON object showing all Distributions and their associated information (including the ID). From here, we can run the deployment from within the `site/app` sub-folder:
+
+```zsh
+# Build
+hugo
+
+# Deploy
+hugo deploy
+```
+
+This will push all of your static files to S3, after which your website should be up and running!

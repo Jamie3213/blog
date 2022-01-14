@@ -1,16 +1,11 @@
 version: 0.2
 
 phases:
-  pre_build:
-    commands:
-      - echo Installing build dependencies...
-      - wget https://github.com/gohugoio/hugo/releases/download/v0.91.2/hugo_0.91.2_Linux-64bit.deb
-      - dpkg -i hugo_0.91.2_Linux-64bit.deb
-      - apt-get -y install
   build:
     commands:
       - echo Deployment started on `date`
       - echo Downloading build artifacts...
       - aws s3 cp s3://$S3_BUILD_BUCKET/blog/build.zip .
       - unzip build.zip -d build
+      - echo Deploying build artifacts...
       - aws s3 cp --recursive build/site/app/public s3://$S3_DEPLOY_BUCKET
