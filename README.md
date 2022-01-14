@@ -1,4 +1,4 @@
-![](https://codebuild.eu-west-1.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoidm11RUZMdCs2V3BTcmY1NklheXh2ZnBKbTJ6ZkJxdXhIdnNmRDQ4WHZlaEZ2RHEwd3l3K1NaWjBKeGI5cTM1cnZNWkQ0OW5pTm5qSlRoSCs3a0JSaHpJPSIsIml2UGFyYW1ldGVyU3BlYyI6Ik9YQzdGT2doaUdENjJjU0ciLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=main)
+![](https://codebuild.eu-west-1.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiOVdNTVFTb3VMOEx2TW50YUlrdmFmbGlET2RKekdNUFhHM3ZPNGNlekRUK0RGMVoxYzlicm5WZUpERVlsTTJGTlVMVWF2bDVJOXN6R0hLUit0L08yVDdVPSIsIml2UGFyYW1ldGVyU3BlYyI6InE1b0dUU3RYR0RSNkNYSnoiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=main)
 
 # AWS Static Blog
 
