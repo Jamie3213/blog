@@ -253,6 +253,14 @@ resource "aws_iam_role_policy" "codebuild_iam_policy" {
       ]
     },
     {
+      "Sid": "InvalidateCloudFrontPaths",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateInvalidation"
+      ],
+      "Resource": "${aws_cloudfront_distribution.distribution.arn}"
+    },
+    {
       "Sid": "KmsFullAccess",
       "Effect": "Allow",
       "Action": [

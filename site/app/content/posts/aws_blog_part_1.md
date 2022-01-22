@@ -1,7 +1,7 @@
 +++
 author = "Jamie Hargreaves"
 title = "Blogging with AWS - Part 1: Building and Hosting the Blog"
-date = "2022-01-20"
+date = "2022-01-21"
 description = "Deploying a static blog using AWS, Hugo and Terraform."
 tags = [
     "aws",

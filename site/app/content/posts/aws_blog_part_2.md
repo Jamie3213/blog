@@ -1,7 +1,7 @@
 +++
 author = "Jamie Hargreaves"
 title = "Blogging with AWS - Part 2: Implementing a CI/CD Pipeline"
-date = "2022-01-21"
+date = "2022-01-22"
 description = "Building a CI/CD pipeline to deploy changes to a static S3 website."
 tags = [
     "aws",
@@ -156,6 +156,14 @@ resource "aws_iam_role_policy" "codebuild_iam_policy" {
       ]
     },
     {
+      "Sid": "InvalidateCloudFrontPaths",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateInvalidation"
+      ],
+      "Resource": "${aws_cloudfront_distribution.distribution.arn}"
+    },
+    {
         "Sid": "KmsFullAccess",
         "Effect": "Allow",
         "Action": [
@@ -191,6 +199,7 @@ This is a standard step where we specify the principal (in this case the AWS ser
 
 * Creation of Log Streams and the writing of logs to the stream within the Log Group we created for the project.
 * Read/write access on the release artifacts and primary web content buckets, as well as any objects stored within them.
+* Invalidation of CloudFront distribution paths for the distribution created in [Part 1]({{< ref "aws_blog_part_1.md" >}}).
 * Full access to the Key Management Service for use in encrypting and decrypting build artifacts in S3.
 
 With that, we can now define the build project itself:
