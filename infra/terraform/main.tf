@@ -7,9 +7,10 @@ terraform {
   }
 
   backend "s3" {
-    bucket = "s3-jamie-general-config"
-    key    = "blog/terraform.state"
-    region = "eu-west-1"
+    bucket  = "s3-jamie-general-config"
+    key     = "blog/terraform.state"
+    region  = "eu-west-1"
+    encrypt = true
   }
 }
 
@@ -33,7 +34,7 @@ variable "created_by" {
 /* -------------------------------- Providers ------------------------------- */
 
 provider "aws" {
-  region = "eu-west-1"
+  region  = "eu-west-1"
 
   default_tags { 
     tags = {
@@ -145,9 +146,9 @@ resource "aws_cloudfront_distribution" "distribution" {
   }
 
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "Primary"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "Primary"
     viewer_protocol_policy = "redirect-to-https"
 
     forwarded_values {
@@ -361,6 +362,12 @@ resource "aws_codebuild_project" "deploy" {
       type  = "PLAINTEXT"
       value = aws_s3_bucket.primary_bucket.bucket
     }
+
+    environment_variable {
+      name  = "CLOUDFRONT_ID"
+      type  = "PLAINTEXT"
+      value = aws_cloudfront_distribution.distribution.id
+    }
   }
 
   artifacts {
@@ -376,7 +383,7 @@ resource "aws_codebuild_project" "deploy" {
 }
 
 resource "aws_iam_role" "lambda_iam_role" {
-  name = "iam-${data.aws_region.current.name}-jamie-${var.project}-lambda-trigger-codebuild"
+  name               = "iam-${data.aws_region.current.name}-jamie-${var.project}-lambda-trigger-codebuild"
   assume_role_policy = file("policies/lambda_assume_role.json")
 }
 
@@ -420,7 +427,7 @@ resource "aws_lambda_function" "codebuild_trigger" {
   architectures = ["arm64"]
   memory_size   = 128
   description   = "Triggers CodeBuild build project based on S3 change events."
-  timeout = 10
+  timeout       = 10
 
   environment {
     variables = {
@@ -443,7 +450,7 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
   bucket = aws_s3_bucket.release_bucket.bucket
 
   lambda_function {
-    id                  = "trigger-codebuild-event-lambda"
+    id                  = "trigger-codebuild-deploy-lambda"
     lambda_function_arn = aws_lambda_function.codebuild_trigger.arn
     events              = ["s3:ObjectCreated:*"]
     filter_prefix       = "blog/"

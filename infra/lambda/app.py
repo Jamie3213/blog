@@ -46,7 +46,7 @@ def lambda_handler(event: S3EventNotification, context: LambdaContext) -> Lambda
   build_status = build['build']['buildStatus']
 
   if build_status not in ["SUCCEEDED", "IN_PROGRESS"]:
-    msg = f"Failed to CodeBuild project '{CODEBUILD_PROJECT}', build status returned '{build_status}'"
+    msg = f"Failed to start CodeBuild project '{CODEBUILD_PROJECT}', build status returned '{build_status}'"
     logger.error(msg)
     return LambdaResponse(isBase64Encoded=False, statusCode=500, body=json.dumps(msg))
   else:
