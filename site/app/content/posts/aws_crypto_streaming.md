@@ -19,3 +19,4 @@ tags = [
 
 ## Overview
 
+Now, I make it no secret that I think crypto currencies possess none of the fundamental characteristics of real currencies and currently serve little purpose beyond acting as speculative (and extremely volatile), investments with no discernable underlying value. That being said, one thing that is very useful about crypto currencies is the wealth of (often free), real-time APIs that exist to stream crypto trading data and we're going to make use of one such API in this post to see how we can build a real-time streaming pipeline in AWS.
