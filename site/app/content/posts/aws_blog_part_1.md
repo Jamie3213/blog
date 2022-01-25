@@ -253,6 +253,24 @@ provider  "aws" {
 }
 ```
 
+We now need to define some [data sources](https://www.terraform.io/language/data-sources); these are essentially references to resources or other information defined outside of Terraform itself that we can use within our `main.tf` file. The three data sources we'll use are:
+
+* The `aws_region` which allows us to get information about the configured region for the current AWS provider.
+* The `aws_caller_identity` which allows us to get information like the current Account ID.
+* An `aws_route53_zone` which let's us reference the Hosted Zone we created in the previous steps.
+
+```tf
+# Data sources
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}
+
+data "aws_route53_zone" "hosted_zone" {
+    zone_id      = "Z0827073DSZEQ2F7K5PK"
+    private_zone = false
+ }
+```
+
 Next we need to define our S3 buckets. The primary bucket that will be used to store our web content needs to be publicly accessible, whilst the rest of our buckets should be private. In addition, the diagram I showed earlier had an arrow indicating that the `jamiehargreaves.co.uk` bucket would redirect to the `www.jamiehargreaves.co.uk` bucket and that's exactly the case. When a request is sent to the base domain, the only purpose of its bucket will be to forward on those requests to the prefixed domain bucket, which will actually contain the web content (though this could be the other way around and, arguably, should be but it doesn't make any practical difference). It's also worth noting that the bucket names for the website itself aren't optional, *you must name your bucket the same name as the domain*.
 
 ```tf
