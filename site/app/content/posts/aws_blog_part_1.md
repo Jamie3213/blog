@@ -257,10 +257,9 @@ We now need to define some [data sources](https://www.terraform.io/language/data
 
 * The `aws_region` which allows us to get information about the configured region for the current AWS provider.
 * The `aws_caller_identity` which allows us to get information like the current Account ID.
-* An `aws_route53_zone` which let's us reference the Hosted Zone we created in the previous steps.
+* An `aws_route53_zone` which lets us reference the Hosted Zone we created in the previous steps.
 
 ```tf
-# Data sources
 data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
