@@ -192,7 +192,7 @@ Now that's out of the way, we can start defining the rest of our resources. I'll
 A really crucial thing to note in this first code block is the use of the `backend` block within the top level `terraform` definition. Terraform stores the state of your deployed resources in a configuration file which, by default, is stored locally. The problem here is that if anything happens to your state file (e.g. you accidentally delete it), you can end up with orphaned resources that are no longer registered as remote resources with Terraform. Whilst you could version control this file, this risks compromising sensitive data that Terraform may store in plain text in the state file. For this reason, you should always store your state remotely, in this case in a versioned S3 bucket, and this is the purpose of the `backend` block.
 
 ```tf
-# Provider
+# Main configuration
 terraform {
   required_providers {
     aws = {
@@ -229,6 +229,7 @@ variable "created_by" {
 I alluded earlier to the need to be able to deploy resources into different regions and this is beacuse CloudFront distributions require all SSL certificates to be provisioned in `us-east-1`, therefore I'm going to define two providers: one in my primary region of `eu-west-1` (i.e. Ireland), and another in `us-east-1` (N. Virginia), which I'll use when I'm deploying the SSL certificate and which I'll alias as `useast`. In both, I'm using the `default_tags` argument which lets us define a set of default tags that are applied to any resources using that provider which support tags:
 
 ```tf
+# Providers
 provider "aws" {
   region = "eu-west-1"
 
@@ -260,6 +261,7 @@ We now need to define some [data sources](https://www.terraform.io/language/data
 * An `aws_route53_zone` which lets us reference the Hosted Zone we created in the previous steps.
 
 ```tf
+# Data sources
 data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
@@ -318,6 +320,7 @@ Here, we've assigned our `primary_bucket` an IAM policy stored in an `infra/poli
 We covered the importance of using an SSL certificate in order to enforce HTTPS, so we'll deploy that next. It's worth noting that the `subject_alternative_name` argument here only contains a reference to the redirect bucket since the domain name reference is the fully prefixed version. If we reference both of these domains as alternative names, then the duplicate one will be automatically ignored by AWS in the deployment which means Terraform will detect drift between the resource definition and the actual resource any time we run an apply command, even though nothing has actually changed. In addition, note that I'm using the aliased `useast` provider here, since certificates needs to be provisioned in `us-east-1` in order to work with CloudFront.
 
 ```tf
+# SSL certificate
 resource "aws_acm_certificate" "cert" {
   provider                  = aws.useast
   domain_name               = aws_s3_bucket.primary_bucket.bucket
@@ -329,6 +332,7 @@ resource "aws_acm_certificate" "cert" {
 Now that we have an SSL certificate set up, we need to go through the DNS validation process. You can read more in the [documentation](https://docs.aws.amazon.com/acm/latest/userguide/dns-validation.html) about how DNS validation works, but the TLDR version is that this process is how AWS establishes that you own your domain.
 
 ```tf
+# Route 53
 resource "aws_route53_record" "cnames" {
   for_each = {
     for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.domain_name => {
@@ -345,6 +349,7 @@ resource "aws_route53_record" "cnames" {
   zone_id = data.aws_route53_zone.hosted_zone.zone_id
 }
 
+# Certificate validation
 resource "aws_acm_certificate_validation" "cert_validation" {
   provider                = aws.useast
   certificate_arn         = aws_acm_certificate.cert.arn
@@ -363,6 +368,7 @@ Next, we need to add the CloudFront distribution itself. This resource probably 
 * Telling CloudFront which SSL certificate to use.
 
 ```tf
+# CloudFront Distribution
 resource "aws_cloudfront_distribution" "distribution" {
   origin {
     origin_id   = "Primary"
@@ -424,6 +430,7 @@ resource "aws_cloudfront_distribution" "distribution" {
 The last thing we need to do before we have all the resources we need to have a fully functioning static website is to define two last records in our Hosted Zone in Route 53 which point to our new CloudFront distribution:
 
 ```tf
+# CloudFront alias records
 resource "aws_route53_record" "primary_record" {
   zone_id = data.aws_route53_zone.hosted_zone.zone_id
   name    = aws_s3_bucket.primary_bucket.bucket

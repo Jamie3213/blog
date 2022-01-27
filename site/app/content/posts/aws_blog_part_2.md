@@ -205,6 +205,7 @@ This is a standard step where we specify the principal (in this case the AWS ser
 With that, we can now define the build project itself:
 
 ```tf
+# CodeBuild project - build
 resource "aws_codebuild_project" "build" {
   name           = "build-jamie-blog-site"
   description    = "Builds Hugo blog static files."
@@ -261,6 +262,7 @@ It's also worth mentioning the presence of the `badge_enabled` flag; this is com
 I mentioned earlier that when we commit to the GitHub repo, we use a webhook to trigger the build. You can read more about GitHub webhooks [here](https://docs.github.com/en/developers/webhooks-and-events/webhooks/about-webhooks), but in short, when we commit to the repo, GitHub makes an API call which invokes the configured CodeBuild project. The webhook is defined as follows:
 
 ```tf
+# GitHub webhook
 resource "aws_codebuild_webhook" "webhook" {
   project_name = aws_codebuild_project.build.name
   build_type   = "BUILD"
@@ -314,6 +316,7 @@ All the above commands do is download and install Hugo in the container, build t
 Next, we can define the deployment build project and this is broadly the same as the previous build project except that we don't need to output any artifacts. In addition, we also make use of `environment_variable` blocks within which we define three environment variables that will be made available to us when we come to run the deployment: the name of the S3 bucket into which our web content should be deployed, the name of the S3 bucket which holds the build artifacts and the ID of our CloudFront distribution which we'll reference when we invalidate the associated CloudFront paths.
 
 ```tf
+# CodeBuild project - deploy
 resource "aws_codebuild_project" "deploy" {
   name           = "deploy-jamie-blog-site"
   description    = "Deploy the static Hugo blog to Amazon S3."
@@ -569,6 +572,7 @@ Now that we've done this, we can finish up and add the remaining pieces of Terra
 The first thing we need for our Lambda function is an IAM role that it can use to perform the required activities:
 
 ```tf
+# Lamdba IAM role
 resource "aws_iam_role" "lambda_iam_role" {
   name               = "iam-${data.aws_region.current.name}-jamie-${var.project}-lambda-trigger-codebuild"
   assume_role_policy = file("policies/lambda_assume_role.json")
@@ -595,6 +599,7 @@ As before, this references a policy in the `policies` sub-folder that allows Lam
 Next we associate a set of permissions with the role, namely, the ability to create Log Groups and Log Streams, as well as writing to Log Streams, and the ability to start the `deploy-jamie-blog-site` CodeBuild project:
 
 ```tf
+# Lambda IAM policy
 resource "aws_iam_role_policy" "lambda_iam_policy" {
   name = "policy-jamie-${var.project}-lambda-trigger"
   role = aws_iam_role.lambda_iam_role.name
@@ -632,6 +637,7 @@ Annoyingly, one of the limitations of Lambda is that we can't specify the Log Gr
 Now we can define the Lambda function itself:
 
 ```tf
+# Lambda function
 resource "aws_lambda_function" "codebuild_trigger" {
   filename      = "../lambda.zip"
   function_name = "lambda-jamie-${var.project}-trigger-deployment"
@@ -666,6 +672,7 @@ The `source_code_hash` is important, if we don't include this then even if we ch
 We just have two more things to define. We need to give the S3 bucket permission to invoke our Lambda function when a relevant change event occurs:
 
 ```tf
+# S3 permissions
 resource "aws_lambda_permission" "s3_invoke" {
   statement_id  = "AllowExecutionFromS3Bucket"
   action        = "lambda:InvokeFunction"
@@ -678,6 +685,7 @@ resource "aws_lambda_permission" "s3_invoke" {
 Finally, we need to add an event notification onto the bucket holding the build artifacts:
 
 ```tf
+# S3 bucket notification
 resource "aws_s3_bucket_notification" "bucket_notification" {
   bucket = aws_s3_bucket.release_bucket.bucket
 
