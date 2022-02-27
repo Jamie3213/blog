@@ -5,10 +5,10 @@ date = "2022-01-21"
 description = "Deploying a static blog using AWS, Hugo and Terraform."
 tags = [
     "aws",
-    "amazon s3",
-    "amazon cloudfront",
-    "amazon route 53",
-    "amazon certificate manager",
+    "s3",
+    "cloudfront",
+    "route 53",
+    "certificate manager",
     "hugo",
     "markdown",
     "terraform"

@@ -5,9 +5,9 @@ date = "2022-01-22"
 description = "Building a CI/CD pipeline to deploy changes to a static S3 website."
 tags = [
     "aws",
-    "amazon s3",
-    "aws codebuild",
-    "aws lambda",
+    "s3",
+    "codebuild",
+    "lambda",
     "terraform",
     "hugo",
     "ci/cd",
