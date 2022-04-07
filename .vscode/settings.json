@@ -3,6 +3,7 @@
         "aiohttp",
         "asynchrony",
         "asyncio",
+        "behaviour",
         "boto",
         "dataclass",
         "Fargate",
