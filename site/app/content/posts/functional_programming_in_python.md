@@ -7,7 +7,7 @@ tags = [
 ]
 +++
 
-!["Header showing an image of a bookshelf"](/images/dynamodb_concurrency/header.jpg)
+!["Header showing an image of a bookshelf"](/images/pragmatic_functional_programming/mountains.jpg)
 
 ## Who cares?
 
