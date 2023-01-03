@@ -1,7 +1,7 @@
 +++
 author = "Jamie Hargreaves"
 title = "Pragmatic Functional Programming in Python - Part 1: What Makes Code Functional?"
-date = "2022-08-18"
+date = "2023-01-03"
 description = ""
 tags = [
 ]
