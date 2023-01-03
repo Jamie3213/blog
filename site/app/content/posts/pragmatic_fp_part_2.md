@@ -7,7 +7,7 @@ tags = [
 ]
 +++
 
-![""](/images/pragmatic_functional_programming/mountains.jpg)
+!["Northern lights over a mountain"](/images/pragmatic_functional_programming/northern_lights.jpg)
 
 ## I thought we were going to talk about Monads?
 
@@ -58,13 +58,13 @@ failure = divide(1.0, 0.0)
 
 # Result: 1.5
 success.either(
-    lambda left: print(left),
+    lambda left: print(left.__name__),
     lambda right: print(right)
 )
 
 # ZeroDivisionError
 failure.either(
-    lambda left: print(left),
+    lambda left: print(left.__name__),
     lambda right: print(right)
 )
 ```
@@ -102,7 +102,7 @@ result = (
 
 # Result: 13,824
 result.either(
-    lambda left: print(left),
+    lambda left: print(left.__name__),
     lambda right: print(f"Result: {int(right):,}")
 )
 ```
