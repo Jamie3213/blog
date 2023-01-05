@@ -56,7 +56,7 @@ How do we actually get values out of a Functor? Remember, if we call `divide(1.0
 success = divide(1.0, 2.0)
 failure = divide(1.0, 0.0)
 
-# Result: 1.5
+# Result: 0.5
 success.either(
     lambda left: print(left.__name__),
     lambda right: print(right)
