@@ -1,6 +1,6 @@
 +++
 author = "Jamie Hargreaves"
-title = "Pragmatic Functional Programming in Python - Part 3: What the Hell is an Applicative?"
+title = "Pragmatic Functional Programming in Python - Part 3: Applicatives"
 date = "2023-01-11"
 description = ""
 tags = [
@@ -11,7 +11,7 @@ tags = [
 
 ## We're *still* not talking about Monads?!
 
-In [the last post in this series](https://jamiehargreaves.co.uk/posts/pragmatic-functional-programming-in-python-part-1-what-makes-code-functional/) we talked about Functors and how they could help keep functions pure (in our case when dealing with exceptions), and how they provided a mechanism to compose functions with their `map` method. We also talked about the road to understanding Monads and how an understanding of Functors and Applicatives was fundamental to that journey. So, before we *finally* talk about Monads, let's talk about Applicatives.
+In [the last post in this series](https://jamiehargreaves.co.uk/posts/pragmatic-functional-programming-in-python-part-2-functors/) we talked about Functors and how they could help keep functions pure (in our case when dealing with exceptions), and how they provided a mechanism to compose functions with their `map` method. We also talked about the road to understanding Monads and how an understanding of Functors and Applicatives was fundamental to that journey. So, before we *finally* talk about Monads, let's talk about Applicatives.
 
 ## Currying
 
@@ -38,9 +38,9 @@ As promised we can directly apply arguments successively as in the first example
 
 ## Applicatives: like Functors but not
 
-When we used `map` [in the previous post](https://jamiehargreaves.co.uk/posts/pragmatic-functional-programming-in-python-part-2-what-the-hell-is-a-functor/#encoding-exceptions-with-functors), I purposely composed functions which only took one argument. This is important because, fundamentally, function composition takes the result of one function and passes that single result as the argument to the next function in the chain. So how do we compose functions when some of those functions expect to receive multiple arguments? As we just saw, currying gives us a simple way to convert multi-parameter functions into multiple functions, each with a single parameter.
+When we used `map` [in the previous post](https://jamiehargreaves.co.uk/posts/pragmatic-functional-programming-in-python-part-2-functors/#encoding-exceptions-with-functors), I purposely composed functions which only took one argument. This is important because, fundamentally, function composition takes the result of one function and passes that single result as the argument to the next function in the chain. So how do we compose functions when some of those functions expect to receive multiple arguments? As we just saw, currying gives us a simple way to convert multi-parameter functions into multiple functions, each with a single parameter.
 
-When we created the curried `add_n` function we saw that it effectively acted like two chained functions, so in theory we should now be able to use it function composition, right? Let's use [the divide function we wrote in the last post](https://jamiehargreaves.co.uk/posts/pragmatic-functional-programming-in-python-part-2-what-the-hell-is-a-functor/#encoding-exceptions-with-functors) and see:
+When we created the curried `add_n` function we saw that it effectively acted like two chained functions, so in theory we should now be able to use it function composition, right? Let's use [the divide function we wrote in the last post](https://jamiehargreaves.co.uk/posts/pragmatic-functional-programming-in-python-part-2-functors/#encoding-exceptions-with-functors) and see:
 
 ```python
 result = (

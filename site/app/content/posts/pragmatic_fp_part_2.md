@@ -1,6 +1,6 @@
 +++
 author = "Jamie Hargreaves"
-title = "Pragmatic Functional Programming in Python - Part 2: What the Hell is a Functor?"
+title = "Pragmatic Functional Programming in Python - Part 2: Functors"
 date = "2023-01-03"
 description = ""
 tags = [
