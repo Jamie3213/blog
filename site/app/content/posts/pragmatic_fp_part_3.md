@@ -7,7 +7,7 @@ tags = [
 ]
 +++
 
-!["Northern lights over a mountain"](/images/pragmatic_functional_programming/northern_lights.jpg)
+!["Northern lights over a mountain"](/images/pragmatic_functional_programming/sunset.jpg)
 
 ## We're *still* not talking about Monads?!
 
