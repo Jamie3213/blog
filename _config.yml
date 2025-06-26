@@ -1,0 +1,15 @@
+title: Jamie Hargreaves
+email: jamie_3213@hotmail.com
+description: Welcome to my blog.
+baseurl: /blog
+logo: /assets/img/logo.png
+url: jamie3213.github.io
+github_username:  jamie3213
+
+# Build settings
+remote_theme: pages-themes/minimal@v0.2.0
+plugins:
+  - jekyll-remote-theme
+kramdown:
+  input: GFM
+  toc_levels: 2..2
