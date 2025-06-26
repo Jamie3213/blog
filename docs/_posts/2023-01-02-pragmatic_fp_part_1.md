@@ -1,11 +1,9 @@
-+++
-author = "Jamie Hargreaves"
-title = "Pragmatic Functional Programming in Python - Part 1: What Makes Code Functional?"
-date = "2023-01-02"
-description = ""
-tags = [
-]
-+++
+---
+layout: post
+title:  "Pragmatic Functional Programming in Python - Part 1: What Makes Code Functional?"
+date:   2023-01-02
+categories: python 'functional programming'
+---
 
 !["Header showing an image of some pretty mountains"](/images/pragmatic_functional_programming/mountains.jpg)
 
