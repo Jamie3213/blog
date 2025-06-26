@@ -1,9 +1,9 @@
 title: Jamie Hargreaves
 email: jamie_3213@hotmail.com
+url: https://blog.jamiehargreaves.co.uk
+baseurl: ''
 description: Welcome to my blog.
-baseurl: /blog
 logo: /assets/img/logo.png
-url: jamie3213.github.io
 github_username:  jamie3213
 
 # Build settings
