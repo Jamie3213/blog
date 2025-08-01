@@ -54,7 +54,8 @@ Thinking particularly about PySpark-based data applications, we want to structur
 * Unit and interation testing (e.g., [Pytest](https://docs.pytest.org/en/stable/))
 * Architectural decision records (e.g., as outlined by [Michael Nygard](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions))
 
-In relation to the ability to deploy data applications through mechanisms like wheels; a data platform's ability to support this as opposed the notebook-based route mentioned above should be a significant indicator as to the maturity of the platform and its suitability as a serious, scalable, development platform.
+> [!WARNING]  
+> In relation to the ability to deploy data applications through mechanisms like wheels; a data platform's ability to support this as opposed the notebook-based route mentioned above should be a significant indicator as to the maturity of the platform and its suitability as a serious, scalable, development platform.
 
 In terms of a loose project structure, a typical, minimal project for the `foo` domain might look something like this:
 
