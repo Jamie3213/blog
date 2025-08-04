@@ -113,4 +113,4 @@ From a testing perspective, `etl` is typically tested through integration tests,
 
 ## Abstracting the I/O components
 
-A useful abstraction when trying to isolate the the I/O components of an ETL process (the E and L), from the transformation component, is through the introduction of a Data Access Layer.
+A useful abstraction when trying to isolate the the I/O components of an ETL process (the E and L), from the transformation component, is through the introduction of a Data Access Layer. For all intents and purposes this is a wrapper around 
