@@ -14,7 +14,7 @@ tags: python spark etl
 
 ## I've been to hell and it looks like a Jupyter notebook
 
-One of my biggest frustrations with data engineering, both the discipline itself and the platforms that support it (like Databricks and Microsoft Fabric), is the relentless and seemingly never-ending push towards notebooks as the primary mechanism to write and deliver code. Before we discuss what's _bad_ about notebooks though, let's think about why they might have become so popular and why enterprise platforms seem so intent on ecouraging their use:
+One of my biggest frustrations with data engineering as a discipline and enterprise data platforms like Databricks and Microsoft Fabric is the relentless and seemingly never-ending push towards notebooks as the primary mechanism to write and deliver code. Notebooks are synonymous with a scripting style approach to development and that lends itself to a host of bad practices. If they're so _obviously_ bad though, why have notebooks become so popular and why do platforms seem so intent on ecouraging their use? Well, here are some reasons I can think of:
 
 * **Time-to-value:** notebooks take us from zero to _something_ quickly, they let us write code and interact with data with little to no setup, often inside the browser.
 
@@ -22,7 +22,7 @@ One of my biggest frustrations with data engineering, both the discipline itself
 
 * **Accessibility:** notebooks are used across disciplines, making them a familiar tool for data engineers, data scientists and data analysts, lowering the barrier to entry for less technical users and abstracting away complexities like environment and dependency management.
 
-* **Collaboration:** platforms like Databricks offer collaborative notebook experiences, similar to something like a shared Google doc, meaning multiple team memebers can write and interact with a piece of code simultaneously.
+* **Collaboration:** platforms like Databricks offer collaborative notebook experiences, similar to something like a shared Google doc, meaning multiple team memebers can write and interact with code simultanesouly
 
 These things are all genuinely positive facets of the notebook experience and in an agile environment where we want to get data into the hands of our users as quickly as possible, things like time-to-value and ease of use are nothing to scoff at. As is often said though, _"there's no such thing as a free lunch"_, and these benefits typically come with some significant tradeoffs:
 
@@ -38,13 +38,13 @@ These things are all genuinely positive facets of the notebook experience and in
 
 ## What does heaven look like?
 
-Heaven might be a bit of a stretch and whilst _"stop writing scripts, start writing applications"_ might sound catchy, what does it mean in practice? To begin with, we need a fundamental shift in how we think about code, focusing on writing well-reasoned, well-abstracted and well-tested data applications, rather than isolated, script-first notebooks. In doing this, we should aim to adopt all of the usual best practices and learnings gleaned over years in the field of software engineering. Data engineering is ultimately a specialised subset of software engineering focused on systems which collect, process and store data. Broadly speaking, all of the keys to successful software delivery are equally valid in (and applicable to), successful data delivery.
+Heaven might be a bit of a stretch and whilst _"stop writing scripts, start writing applications"_ might sound catchy, what does it mean in practice? The crux is that we need a fundamental shift in how we think about code, focusing on writing well-reasoned, well-abstracted and well-tested data applications, rather than isolated, script-first notebooks. In doing this, we should aim to adopt all of the usual best practices and learnings gleaned over years in the field of software engineering. Data engineering is ultimately a specialised subset of software engineering focused on systems which collect, process and store data. Broadly speaking, all of the keys to successful software delivery are equally applicable to successful data delivery.
 
-### Structuring a project
+## Structuring the project
 
-In general, each data domain or data product (or whatever other philosophy we choose to adopt), should define its own set of data applications - in practice, each application will typically take the form of a Spark process, although the specific execution engine and platform is broadly irrelevant. Whilst we want to aim for applications to be independent of one another in terms of physical execution, there'll typically be logical dependencies in terms of the outputs of one job forming the basis for the input to another. For example, when populating a fact in a star schema, we generally need to populate the dimenions first, since foreign key lookups in the fact are inherently dependent on them. These dependencies can be reflected as part of the orchestration process, rather than being embedded in the applications themselves.
+In general, each data domain or data product (or whatever other philosophy we choose to adopt), should be a single data application - in practice, an application will typically take the form of a series of Spark jobs, although the specific execution engine and platform is broadly irrelevant. Whilst we want to aim for individual jobs to be independent of one another in terms of physical execution, there'll typically be logical dependencies where the output of one job forms the basis for the input to another. For example, when populating a fact in a star schema, we generally need to populate the dimenions first, since foreign key lookups in the fact are inherently dependent on the dimensions. These dependencies can be reflected as part of the orchestration process, rather than being embedded in the application itself.
 
-Thinking particularly about PySpark-based data applications, we want to structure our project such that we're able to build a versioned and deployable artifact, as well as make use of the full Python ecosystem. This really just means that we want to structure our project as a standard Python project using a tool like [Poetry](https://python-poetry.org), deploy our project by building a wheel or some other similar artifact, and follow the usual best practices that would be applicable to any other modern Python project, namely:
+Since most data applications we write will likely be PySpark-based, we'll focus on that context from now on (although the concepts are equally applicable to any language). To begin, we want to structure our project so that we're able to build a versioned and deployable artifact, as well as make use of the full Python ecosystem. This really just means that we want to structure our project as a standard Python project using a tool like [Poetry](https://python-poetry.org), deploy our project by building a wheel or some other similar artifact, and follow the usual best practices that would be applicable to any other modern Python project, namely:
 
 * Linting and code formatting (e.g., [Ruff](https://docs.astral.sh/ruff/))
 * Static type checking (e.g., [Mypy](https://mypy.readthedocs.io/en/stable/))
@@ -54,8 +54,7 @@ Thinking particularly about PySpark-based data applications, we want to structur
 * Unit and interation testing (e.g., [Pytest](https://docs.pytest.org/en/stable/))
 * Architectural decision records (e.g., as outlined by [Michael Nygard](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions))
 
-> [!WARNING]  
-> In relation to the ability to deploy data applications through mechanisms like wheels; a data platform's ability to support this as opposed the notebook-based route mentioned above should be a significant indicator as to the maturity of the platform and its suitability as a serious, scalable, development platform.
+> ⚠️ In relation to the ability to deploy data applications through mechanisms like wheels; a data platform's ability to support this as opposed the notebook-based route mentioned above should be a significant indicator as to the maturity of the platform and its suitability as a serious, scalable, development environment.
 
 In terms of a loose project structure, a typical, minimal project for the `foo` domain might look something like this:
 
@@ -74,13 +73,13 @@ In terms of a loose project structure, a typical, minimal project for the `foo` 
 └── README.md
 ```
 
-### Defining the testing boundaries
+## Defining the application boundaries
 
-The term "data application" is purposefully vague but in reality these applications will often utlimately take the form of an Extract, Transform, Load (ETL) process. If we think about the typical ETL process that we might commonly want to build on platforms like Databricks or EMR, then we can really think of the Extract and Load stages as defining the I/O boundaries of our application - it's at these points that we reach out and interact with the world. This fact should inform our overall software design and, in particualr, the way we test the different components of the process:
+The term "data application" is purposefully vague but in reality these applications will likely take the form of an Extract, Transform, Load (ETL) process. If we think about the typical ETL process that we might commonly want to build on platforms like Databricks or Amazon EMR, then we can really think of the Extract and Load stages as defining the I/O boundaries of our application - it's at these points that we reach out and interact with the world. This fact should inform our overall software design and, in particualr, the way we test the different components of the process:
 
 !["A diagram showing the constituent pieces of an ETL process and the associated testing boundaries"]({{ "/assets/img/stop-writing-scripts-etl.png" | relative_url }})
 
-As outlined in the diagram above, each ETL process should follow the same generic structure where I/O boundaries are isolated from core transformations (i.e., the main business logic). In general:
+As outlined in the diagram above, each ETL process should follow the same generic structure where I/O boundaries are isolated from core transformations (i.e., the main business logic) - in general:
 
 1. Reading and writing data should be abstracted into re-usable interfaces that can be easily tested and mocked, and which form a boundary between I/O and core business rules. These interfaces should be subject to their own unit and, crucially, integration tests.
 
@@ -88,11 +87,11 @@ As outlined in the diagram above, each ETL process should follow the same generi
 
 3. For the sake of portability and accesibility, all transformations should be written as SQL `SELECT` statements.
 
-4. Each transformation forms a unit which should have an associated test or set of tests when behaviour is complex. Where multiple tests are needed, consider using a single parameterized test for clarity.
+4. Each transformation should form a unit with an associated test or set of tests when behaviour is complex. Where multiple tests are needed, consider using a single parameterized test for clarity.
 
 5. In addition to integration tests for I/O interfaces and unit tests for individual units of transformation, we should also define E2E (end-to-end) integration tests that ensure the entire process runs smoothly and produces the expected outputs given defined inputs.
 
-### Code Structure
+## Structuring the code
 
 Using the `foo` domain example from above, each job within the domain should generally be constructed from two pieces:
 
@@ -111,3 +110,7 @@ src
 * `foo.jobs.bar.transformer` - defines a transformer class whose methods implement individual units of transformation, or equivalent free functions.
 
 From a testing perspective, `etl` is typically tested through integration tests, whilst `transformer` is tested via unit tests of the individual transformations.
+
+## Abstracting the I/O components
+
+A useful abstraction when trying to isolate the the I/O components of an ETL process (the E and L), from the transformation component, is through the introduction of a Data Access Layer.
