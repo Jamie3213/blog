@@ -12,4 +12,4 @@ plugins:
   - jekyll-remote-theme
 kramdown:
   input: GFM
-  toc_levels: 2..2
+  toc_levels: 2..3
