@@ -242,7 +242,7 @@ class QueryEngine(Protocol, Generic[T]):
         """Returns the result of the query as a 'dataframe' of type T."""
 
 
-class DuckDbQueryEngine(QueryEngine[pandas.DataFrame]) -> None:
+class DuckDbQueryEngine(QueryEngine[pandas.DataFrame]):
     def __init__(self) -> None:
         self.
 ```
