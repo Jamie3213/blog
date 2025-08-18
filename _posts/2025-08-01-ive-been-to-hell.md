@@ -12,9 +12,9 @@ tags: python spark etl
 * TOC
 {:toc}
 
-## Modern data engineering - welcome to notebook hell
+## Data engineering in notebook hell
 
-One of my biggest frustrations with data engineering as a discipline and enterprise data platforms like Databricks and Microsoft Fabric is the relentless and seemingly never-ending push towards notebooks as the primary mechanism to write and deliver code. Notebooks are synonymous with a scripting style approach to development and that lends itself to a host of bad practices. If they're so _obviously_ bad though, why have notebooks become so popular and why do platforms seem so intent on ecouraging their use? Well, here are some reasons I can think of:
+One of my biggest frustrations with data engineering as a discipline (and enterprise data platforms like Databricks and Microsoft Fabric), is the relentless and seemingly never-ending push towards notebooks as the primary mechanism to write and deliver code. For me, notebooks are synonymous with a scripting style approach to development that lends itself to a host of bad practices, but if they're so _obviously_ bad, why have they become so popular and why do platforms seem so intent on ecouraging their use? Well, several things come to mind:
 
 * **Time-to-value:** notebooks take us from zero to _something_ quickly, they let us write code and interact with data with little to no setup, often inside the browser.
 
@@ -24,7 +24,7 @@ One of my biggest frustrations with data engineering as a discipline and enterpr
 
 * **Collaboration:** platforms like Databricks offer collaborative notebook experiences, similar to a shared Google doc, meaning multiple team memebers can write and interact with code simultanesouly
 
-These things are all genuinely positive facets of the notebook experience and in an agile environment where we want to get data into the hands of our users as quickly as possible, things like time-to-value and ease of use are nothing to scoff at. As is often said though, _"there's no such thing as a free lunch"_, and these benefits typically come with some significant tradeoffs:
+All of these things are genuinely positive facets of the notebook experience and in an agile environment where we want to get data into the hands of our users as quickly as possible, things like time-to-value and ease of use are nothing to scoff at. As is often said though, _"there's no such thing as a free lunch"_, and these benefits typically come with some significant tradeoffs:
 
 * **Developer experience:** since most platforms offer a browser-based notebook interface, the physical act of writing code can often be sluggish and frustrating. In addition, the ease of use tends to come at the expense of a feature-incomplete experience, where debugging is hard or impossible, and basic IDE configuration is non-existent.
 
@@ -38,13 +38,13 @@ These things are all genuinely positive facets of the notebook experience and in
 
 ## Stop writing scripts. Start writing applications
 
-Living the _"stop writing scripts, start writing applications"_ mantra means we need a fundamental shift in how we think about code, focusing on writing well-reasoned, well-abstracted and well-tested data applications, rather than isolated, script-first notebooks. In doing this, we should aim to adopt all of the usual best practices and learnings gleaned over years in the field of software engineering. Data engineering is ultimately a specialised subset of software engineering focused on systems which collect, process and store data. Broadly speaking, all of the keys to successful software delivery are equally applicable to successful data delivery.
+To embrace the _"Stop writing scripts. Start writing applications"_ mantra means a fundamental shift in how we think about our code, focusing on writing well-reasoned, well-abstracted and well-tested data applications, rather than isolated, script-first notebooks. In doing this, we should aim to adopt software engineering best practices gleaned over decades of delivery - after all, data engineering is ultimately a specialised subset of software engineering focused on systems which collect, process and store data. Broadly speaking, all of the keys to successful software delivery are equally applicable to successful data delivery.
 
 ### Structuring the project
 
-In general, each data domain or data product (or whatever other philosophy we choose to adopt), should be a single data application - in practice, an application will typically take the form of a series of Spark jobs, although the specific execution engine and platform is broadly irrelevant. Whilst we want to aim for individual jobs to be independent of one another in terms of physical execution, there'll typically be logical dependencies where the output of one job forms the basis for the input to another. For example, when populating a fact in a star schema, we generally need to populate the dimenions first, since foreign key lookups in the fact are inherently dependent on the dimensions. These dependencies can be reflected as part of the orchestration process, rather than being embedded in the application itself.
+In general, each data domain or data product (or whatever other logical boundary we choose to define), should constitute a single data application. In practice, a data application will typically take the form of a series of distributed jobs (probably running on Spark, though the specific platform and execution engine are broadly irrelevant). We want to aim for individual jobs to be independent of one another in terms of physical execution, however there will almost certainly be logical dependencies where the output of one job forms the basis for the input to another. For example, when populating a fact in a star schema, we generally need to populate the dimenions first, since foreign key lookups in the fact are inherently dependent on the dimensions. These dependencies should be reflected as part of the orchestration process, rather than being embedded in the application itself.
 
-Since most data applications we write will likely be PySpark-based, we'll focus on that context from now on (although the concepts are equally applicable to any language). To begin, we want to structure our project so that we're able to build a versioned and deployable artifact, as well as make use of the full Python ecosystem. This really just means that we want to structure our project as a standard Python project using a tool like [Poetry](https://python-poetry.org), deploy our project by building a wheel or some other similar artifact, and follow the usual best practices that would be applicable to any other modern Python project, namely:
+To make the rest of this discussion more concrete, we'll assume our data application is PySpark-based and focus on that context from now on. To begin, we want to structure our project so that we're able to build a versioned and deployable artifact, as well as make use of the full Python ecosystem. This really just means that we want to structure our project as a standard Python project using a tool like [Poetry](https://python-poetry.org), deploy our project by building a wheel or some other similar artifact, and follow the usual best practices that would be applicable to any other modern Python project, namely:
 
 * Linting and code formatting (e.g., [Ruff](https://docs.astral.sh/ruff/))
 * Static type checking (e.g., [Mypy](https://mypy.readthedocs.io/en/stable/))
@@ -66,7 +66,7 @@ In terms of a loose project structure, a typical, minimal project for the `foo` 
 ├── src
 │   └── foo
 │       ├── jobs
-│       └── utils
+│       └── tools
 ├── .gitignore
 ├── .pre-commit-config.yaml
 ├── pyproject.toml
@@ -83,15 +83,15 @@ As outlined in the diagram above, each ETL process should follow the same generi
 
 1. Reading and writing data should be abstracted into re-usable interfaces that can be easily tested and mocked, and which form a boundary between I/O and core business rules. These interfaces should be subject to their own unit and, crucially, integration tests.
 
-2. The bulk of an ETL process should be constructed from the sequential application of "pure" transformation functions which take one or more data inputs along with any relevant parameters, and return a single data output.
+2. The bulk of an ETL process should be constructed from the sequential application of (more or less) pure transformation functions which take one or more data inputs along with any relevant parameters, and return a single data output.
 
 3. For the sake of portability and accesibility, all transformations should be written as SQL `SELECT` statements.
 
-4. Each transformation should form a unit with an associated test or set of tests when behaviour is complex. Where multiple tests are needed, consider using a single parameterized test for clarity.
+4. Each transformation should form a unit with an associated test, or set of tests when behaviour is complex. Where multiple tests are needed, we should consider using a single parameterized test for clarity.
 
 5. In addition to integration tests for I/O interfaces and unit tests for individual units of transformation, we should also define E2E (end-to-end) integration tests that ensure the entire process runs smoothly and produces the expected outputs given defined inputs.
 
-### Structuring the code
+### Structuring jobs
 
 Using the `foo` domain example from above, each job within the domain should generally be constructed from two pieces:
 
@@ -102,18 +102,18 @@ src
     │   └── bar
     │       ├── __init__.py
     │       ├── etl.py
-    │       └── transformer.py
+    │       └── transforms.py
 ```
 
-* `foo.jobs.bar.etl` - forms the basis for ETL orchestration, defining a `run` function which reads data, applies transformations, and writes to the target.
+* `foo.jobs.bar.etl` - forms the basis for ETL orchestration, defining a `run` function which reads from data sources, applies transformations, and writes to the target.
   
-* `foo.jobs.bar.transformer` - defines a transformer class whose methods implement individual units of transformation, or equivalent free functions.
+* `foo.jobs.bar.transforms` - defines a transforms class whose methods implement individual units of transformation, or equivalent free transform functions.
 
-From a testing perspective, `etl` is typically tested through integration tests, whilst `transformer` is tested via unit tests of the individual transformations.
+From a testing perspective, `etl` is typically tested through integration tests, whilst `transforms` is tested via unit tests of the individual transformations.
 
 ### Abstracting the I/O components
 
-A useful abstraction when trying to isolate the the I/O components of an ETL process (the E and L), from the transformation component, is through the introduction of a Data Access Layer (DAL) which acts as a lightweight wrapper around read and write operations against a data store. Let's imagine that we're reading from and writing to a Unity Catalog metastore in Databricks - what might a simple DAL look like?
+A useful abstraction when trying to isolate the the I/O components of an ETL process (the E and L), from the transformation component (the T), is through the introduction of a Data Access Layer (DAL) which acts as a lightweight wrapper around read and write operations against a datastore. Let's imagine that we're reading from and writing to tables in a a Unity Catalog metastore in Databricks - what might a simple DAL look like?
 
 ```python
 from logging import Logger
@@ -127,19 +127,20 @@ class UnityCatalog:
         self._logger = logger
         self._catalog = catalog
 
-    def read(self, table: str, schema: str, columns: list[str] | None = None) -> DataFrame:
+    def read(self, table: str, schema: str, select: list[str] | None = None) -> DataFrame:
         name = f"{schema}.{table}"
-        cols = ["*"] if columns is None else columns
+        colums = ["*"] if select is None else select
         self._logger.info(f"Reading table '{name}' from catalog '{self._catalog}'")
-        return self._spark.read.table(f"{self._catalog}.{name}").select(*cols)
+        return self._spark.read.table(f"{self._catalog}.{name}").select(*colums)
 
     def append(self, data: DataFrame, table: str, schema: str) -> None:
         name = f"{schema}.{table}"
         self._logger.info(f"Appending records to table '{name}' in catalog '{self._catalog}'")
         data.write.format("delta").mode("append").saveAsTable(f"{self._catalog}.{name}")
+
 ```
 
-We can now create catalog-specific instances of the `UnityCatalog` class and use them to access data in a consistent manner:
+We can now create catalog-specific instances of the `UnityCatalog` class and use them to interact with data consistently across multiple ETL processes:
 
 ```python
 import logging
@@ -150,12 +151,13 @@ spark = SparkSession.builder.getOrCreate()
 logger = logging.getLogger("example")
 
 # Log output:
-# [2025-08-13 16:19:52,900 | INFO ] : Rading table 'bar.baz' from catalog 'foo'
-foo = UnityCatalog(spark, logger, "foo")
-bar = foo.read("baz", "bar")
+# [2025-08-13 16:19:52,900 | INFO ] : Rading table 'that.other' from catalog 'this'
+this = UnityCatalog(spark, logger, "this")
+other = foo.read("other", "that")
+
 ```
 
-In most real-world scenarios (as above), we'd likely implement a single DAL that handles both reading and writing, however we could instead specify the minimum behaviour our orchestration code needs from each dependency - for example:
+Alternatively, instead of specifying _what_ datastore we're interacting with (Unity Catalog, SQL Server, Amazon S3 or anything else), we could instead specify _how_ we intract with those datastores:
 
 ```python
 from typing import Protocol
@@ -164,7 +166,7 @@ from pyspark.sql import DataFrame
 
 
 class HasRead(Protocol):
-    def read(self, table: str, schema: str, columns: list[str] | None = None) -> DataFrame:
+    def read(self, table: str, schema: str, select: list[str] | None = None) -> DataFrame:
         """Reads a table from the given schema and returns the result as a DataFrame."""
 
 
@@ -175,14 +177,15 @@ class HasAppend(Protocol):
 
 def run(foo: HasRead, bar: HasRead, baz: HasAppend) -> None:
     """Orchestrates the ETL process."""
+
 ```
 
-Here, rather than just saying that `foo`, `bar` and `baz` are Unity Catalog catalogs, we're being explicit about how we actually _use_ them:
+Now we don't really care _where_ our data is stored, we just care that wherever it is, that place supports interacting with the data in the way we want. These new type hints tell us that:
 
 * We read data from tables in `foo` and `bar`
 * We append data to a table in `baz`
 
-By modelling these capabilities as separate Protocol types, we avoid forcing every DAL to implement methods it doesn’t actually need. This keeps the contracts small and focused, and means our orchestration logic stays completely agnostic about the actual implementation. That way, `foo`, `bar`, and `baz` could each be:
+This is more informative than just knowing that, for example, _"`foo` is a Unity Catalog catalog"_. Now, if `foo` was originally stored in a SQL Server database but has been migrated to Unity Catalog, nothing in the ETL code needs to change because all the orchestration code cares about is that the read behaviour is still supported. By modelling these capabilities as separate Protocol types, we avoid forcing every DAL to implement methods it doesn’t actually need. This keeps the contracts small and focused, and means our orchestration logic stays completely agnostic about the actual implementation. That way, `foo`, `bar`, and `baz` could each be:
 
 * Different concrete DALs for different systems
 * Mock objects for testing
@@ -206,6 +209,7 @@ class SparkQueryEngine:
 
     def query(self, statement: str, tables: dict[str, DataFrame], params: dict[str, Any] | None = None) -> DataFrame:
         return self._spark.sql(sqlQuery=statement, args=params, **tables)
+
 ```
 
 This class looks fairly innocuous but it serves the specific puspose of allowing us to avoid passing around a loose Spark session and instead pass around an abstraction of the Spark session that enforces an agreed methodology to defining transforms. We can now define transforms as follows:
@@ -220,29 +224,82 @@ def add_that(engine: SparkQueryEngine, foo: DataFrame, bar: DataFrme, category: 
             SELECT f.id, f.this, b.that
             FROM {foo} f
             INNER JOIN {bar} b
-            ON f.id = b.id AND b.that = :category
+            ON f.id = b.id AND b.other = :category
         """,
         tables={"foo": foo, "bar": bar},
         params={"category": category},
     )
+
 ```
 
-Much like the DAL example above, the other added benefit here is that, if necessary, we could define some kind of generic Protocol for the query interface and write a concrete implementation over a completely different underlying engine with completely different types of DataFrame - for example:
+The benefit of running SparkSQL queries directly on top of DataFrames as above is that we no longer need to worry about setting up temporary views for each of our DataFrames, and we can easily unit test these SQL-based transforms:
 
 ```python
-from typing import Generic, Protocol, TypeVar
+import pytest
+from pyspark.sql import SparkSession
+from pyspark.testing import assertDataFrameEqual
 
-import pandas
-
-T = TypeVar(T)
-
-
-class QueryEngine(Protocol, Generic[T]):
-    def query(self, statement: str, tables: dict[str, T], params: dict[str, Any] | None = None) -> T:
-        """Returns the result of the query as a 'dataframe' of type T."""
+from foo.jobs.bar import transforms
 
 
-class DuckDbQueryEngine(QueryEngine[pandas.DataFrame]):
-    def __init__(self) -> None:
-        self.
+@pytest.fixture(scope="session")
+def spark() -> SparkSession:
+    return SparkSession.builder.master("local[1]").getOrCreate()
+
+
+def test_should_add_that(spark: SparkSession) -> None:
+    foo = spark.createDataFrame(
+        data=[(1, "cat"), (2, "dog"), (3, "fish"), (4, "squirrel")],
+        schema="id BIGINT, this STRING",
+    )
+    bar = spark.createDataFrame(
+        data=[(1, "red", "colour"), (2, "green", "colour"), (3, "sunny", "weather")],
+        schema="id BIGINT, that STRING, other STRING",
+    )
+
+    expected = spark.createDataFrame(
+        data=[(1, "cat", "red"), (2, "dog", "green")],
+        schema="id BIGINT, this STRING, that STRING",
+    )
+
+    actual = transforms.add_that(foo, bar, category="colour")
+    assertDataFrameEqual(actual, expected)
+
 ```
+
+### The final product
+
+Using the ideas we've outlined above, the `foo` domain's `bar` job would implement an `etl` module that looked something like this:
+
+```python
+# src/foo/jobs/bar/etl.py
+
+from logging import Logger
+
+from foo.jobs.bar import transforms
+from foo.tools.behaviors import HasAppend, HasRead
+from foo.tools.query import SparkQueryEngine
+
+
+def run(source: HasRead, target: HasAppend, engine: SparkQueryEngine) -> None:
+    # Extract
+    something = source.read("source_table", "source_schema", select=["first", "second", "third"])
+
+    # Transform
+    transformed = transforms.add_this(engine, something)
+    transformed = transforms.add_that(engine, transformed)
+    transformed = transforms.add_the_other(engine, transformed)
+
+    # Load
+    target.append(transformed, "target_table", "target_schema")
+
+```
+
+This approach ensures that:
+
+* Each job is isolated from any other, with the only dependencies being logical dependencies on the data the job needs to read
+* All core business rules defined by our transforms are testable in isolation and written in a format which is understandable by a large range of users outside of data engineers
+* The overall ETL process is easily testable, either by standing up real instances of required tables or by mocking the DALs that are passed into the `run` function
+* The separation of each stage of the ETL process is clear and provides a simple high-level flow of data through the ETL process
+
+Dependng on the similarity of the various jobs in the `foo` domain, we might choose to define a single entrypoint into the application or we might decide to have an entrypoint per job. In either case, the entrypoint is where we would handle instantiating things like a Spark session and instances of our DALs. In addition, we might also want to pass a logger into the `run` function or alternatively define some kind of decorator for transforms to auto-log key execution metrics to avoid cluttering the `run` function.
