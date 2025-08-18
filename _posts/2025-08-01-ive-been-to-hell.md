@@ -44,7 +44,7 @@ To embrace the _"Stop writing scripts. Start writing applications"_ mantra means
 
 In general, each data domain or data product (or whatever other logical boundary we choose to define), should constitute a single data application. In practice, a data application will typically take the form of a series of distributed jobs (probably running on Spark, though the specific platform and execution engine are broadly irrelevant). We want to aim for individual jobs to be independent of one another in terms of physical execution, however there will almost certainly be logical dependencies where the output of one job forms the basis for the input to another. For example, when populating a fact in a star schema, we generally need to populate the dimenions first, since foreign key lookups in the fact are inherently dependent on the dimensions. These dependencies should be reflected as part of the orchestration process, rather than being embedded in the application itself.
 
-To make the rest of this discussion more concrete, we'll assume our data application is PySpark-based and focus on that context from now on. To begin, we want to structure our project so that we're able to build a versioned and deployable artifact, as well as make use of the full Python ecosystem. This really just means that we want to structure our project as a standard Python project using a tool like [Poetry](https://python-poetry.org), deploy our project by building a wheel or some other similar artifact, and follow the usual best practices that would be applicable to any other modern Python project, namely:
+To make the rest of this discussion more concrete, we'll assume our data application is PySpark-based and focus on that context. To begin, we want to structure our project so that we're able to build a versioned and deployable artifact, as well as make use of the full Python ecosystem. This really just means that we want to structure our project as a standard Python project using a tool like [Poetry](https://python-poetry.org), deploy our project by building a wheel or some other similar artifact, and follow the usual best practices that would be applicable to any other modern Python project, namely:
 
 * Linting and code formatting (e.g., [Ruff](https://docs.astral.sh/ruff/))
 * Static type checking (e.g., [Mypy](https://mypy.readthedocs.io/en/stable/))
@@ -75,7 +75,7 @@ In terms of a loose project structure, a typical, minimal project for the `foo` 
 
 ### Defining the application boundaries
 
-The term "data application" is purposefully vague but in reality these applications will often take the form of an Extract, Transform, Load (ETL) process. If we think about the typical ETL process that we might commonly want to build on platforms like Databricks or Amazon EMR, then we can really think of the Extract and Load stages as defining the I/O boundaries of our application - it's at these points that we reach out and interact with the world. This fact should inform our overall software design and, in particualr, the way we test the different components of the process:
+The term "data application" is purposefully vague but in reality these applications will often take the form of an Extract, Transform, Load (ETL) process. If we think about the typical ETL process that we might want to build on platforms like Databricks or Amazon EMR, then we can really think of the Extract and Load stages as defining the I/O boundaries of our application - it's at these points that we reach out and interact with the world. This fact should inform our overall software design and, in particular, the way we test the different components of the process.
 
 !["A diagram showing the constituent pieces of an ETL process and the associated testing boundaries"]({{ "/assets/img/stop-writing-scripts-etl.png" | relative_url }})
 
@@ -116,6 +116,8 @@ From a testing perspective, `etl` is typically tested through integration tests,
 A useful abstraction when trying to isolate the the I/O components of an ETL process (the E and L), from the transformation component (the T), is through the introduction of a Data Access Layer (DAL) which acts as a lightweight wrapper around read and write operations against a datastore. Let's imagine that we're reading from and writing to tables in a a Unity Catalog metastore in Databricks - what might a simple DAL look like?
 
 ```python
+# src/foo/tools/dals/unity_catalog.py
+
 from logging import Logger
 
 from pyspark.sql import DataFrame, SparkSession
@@ -147,19 +149,23 @@ import logging
 
 from pyspark.sql import SparkSession
 
+from foo.tools.dals.unity_catalog import UnityCatalog
+
 spark = SparkSession.builder.getOrCreate()
 logger = logging.getLogger("example")
 
 # Log output:
-# [2025-08-13 16:19:52,900 | INFO ] : Rading table 'that.other' from catalog 'this'
-this = UnityCatalog(spark, logger, "this")
-other = foo.read("other", "that")
+# [2025-08-13 16:19:52,900 | INFO ] : Rading table 'my_schema.my_table' from catalog 'my_catalog'
+my_catalog = UnityCatalog(spark, logger, "my_catalog")
+my_table = my_catalog.read("my_table", "my_schema")
 
 ```
 
-Alternatively, instead of specifying _what_ datastore we're interacting with (Unity Catalog, SQL Server, Amazon S3 or anything else), we could instead specify _how_ we intract with those datastores:
+When it comes to type hints, rather than specifying _what_ datastore we're interacting with (Unity Catalog, SQL Server, Amazon S3 etc.), we could instead specify _how_ we intract with them:
 
 ```python
+# src/foo/tools/dals/behaviors.py
+
 from typing import Protocol
 
 from pyspark.sql import DataFrame
@@ -174,22 +180,13 @@ class HasAppend(Protocol):
     def append(self, data: DataFrame, table: str, schema: str) -> None:
         """Appends records from the source DataFrame to the target table."""
 
-
-def run(foo: HasRead, bar: HasRead, baz: HasAppend) -> None:
-    """Orchestrates the ETL process."""
-
 ```
 
-Now we don't really care _where_ our data is stored, we just care that wherever it is, that place supports interacting with the data in the way we want. These new type hints tell us that:
-
-* We read data from tables in `foo` and `bar`
-* We append data to a table in `baz`
-
-This is more informative than just knowing that, for example, _"`foo` is a Unity Catalog catalog"_. Now, if `foo` was originally stored in a SQL Server database but has been migrated to Unity Catalog, nothing in the ETL code needs to change because all the orchestration code cares about is that the read behaviour is still supported. By modelling these capabilities as separate Protocol types, we avoid forcing every DAL to implement methods it doesn’t actually need. This keeps the contracts small and focused, and means our orchestration logic stays completely agnostic about the actual implementation. That way, `foo`, `bar`, and `baz` could each be:
+Now, we don't really care _where_ our data is stored, we just care that wherever it is, it can be interacted with in the ways we expect. Using Protocols like this is more informative than just knowing that, for example, _"`blah` is a Unity Catalog catalog"_ - now we know that `blah` acts as a data source because we specify the need for it to support a `read` method. In addition, if `blah` were originally a SQL Server database but has now been migrated to Unity Catalog, nothing in the ETL code needs to change because all the orchestration code cares about is that the read behaviour is still supported. By modelling these capabilities as separate Protocol types we keep the contracts small and focused, and our orchestration logic stays completely agnostic about the actual implementation. The input DALs to our ETL process could be:
 
 * Different concrete DALs for different systems
 * Mock objects for testing
-* Temporary stubs while you migrate from one storage system to another
+* Temporary stubs whilst migrating between storage systems
 
 The orchestration code doesn’t care — it only cares that each object supports the behaviour it needs.
 
@@ -198,6 +195,8 @@ The orchestration code doesn’t care — it only cares that each object support
 In the ETL principles above we mentioned that all transformations should be written in the form of SQL `SELECT` statements - this is a matter of preference but if we do want to enforce this, we can again implement a simple abstraction:
 
 ```python
+# src/foo/tools/query_engine.py
+
 from typing import Any
 
 from pyspark.sql import DataFrame, SparkSession
@@ -215,19 +214,23 @@ class SparkQueryEngine:
 This class looks fairly innocuous but it serves the specific puspose of allowing us to avoid passing around a loose Spark session and instead pass around an abstraction of the Spark session that enforces an agreed methodology to defining transforms. We can now define transforms as follows:
 
 ```python
+# src/foo/jobs/bar/transforms.py
+
 from pyspark.sql import DataFrame
 
+from foo.tools.query_engine import SparkQueryEngine
 
-def add_that(engine: SparkQueryEngine, foo: DataFrame, bar: DataFrme, category: str) -> DataFrame:
+
+def add_amount(engine: SparkQueryEngine, orders: DataFrame, customers: DataFrame, region: str) -> DataFrame:
     return engine.query(
         statement="""
-            SELECT f.id, f.this, b.that
-            FROM {foo} f
-            INNER JOIN {bar} b
-            ON f.id = b.id AND b.other = :category
+            SELECT o.id, o.amount, c.name
+            FROM {orders} o
+            INNER JOIN {customers} c
+            ON o.customer_id = c.id AND o.region = :region
         """,
-        tables={"foo": foo, "bar": bar},
-        params={"category": category},
+        tables={"orders": orders, "customers": customers},
+        params={"region": region},
     )
 
 ```
@@ -235,11 +238,14 @@ def add_that(engine: SparkQueryEngine, foo: DataFrame, bar: DataFrme, category: 
 The benefit of running SparkSQL queries directly on top of DataFrames as above is that we no longer need to worry about setting up temporary views for each of our DataFrames, and we can easily unit test these SQL-based transforms:
 
 ```python
+# src/tests/unit/jobs/bar/test_transforms.py
+
 import pytest
 from pyspark.sql import SparkSession
 from pyspark.testing import assertDataFrameEqual
 
 from foo.jobs.bar import transforms
+from foo.tools.query_engine import SparkQueryEngine
 
 
 @pytest.fixture(scope="session")
@@ -247,25 +253,33 @@ def spark() -> SparkSession:
     return SparkSession.builder.master("local[1]").getOrCreate()
 
 
-def test_should_add_that(spark: SparkSession) -> None:
-    foo = spark.createDataFrame(
-        data=[(1, "cat"), (2, "dog"), (3, "fish"), (4, "squirrel")],
-        schema="id BIGINT, this STRING",
+@pytest.fixture(scope="session")
+def engine(spark: SparkSession) -> SparkQueryEngie:
+    return SparkQueryEngine(spark)
+
+
+def test_should_add_amount(spark: SparkSession, engine: SparkQueryEngine) -> None:
+    orders = spark.createDataFrame(
+        data=[(1, 1, 100.0, "EU"), (2, 2, 200.0, "EU"), (3, 3, 300.0, "US")],
+        schema="id BIGINT, customer_id BIGINT, amount DOUBLE, region STRING",
     )
-    bar = spark.createDataFrame(
-        data=[(1, "red", "colour"), (2, "green", "colour"), (3, "sunny", "weather")],
-        schema="id BIGINT, that STRING, other STRING",
+    customers = spark.createDataFrame(
+        data=[(1, "Alice"), (2, "Bob"), (3, "Charlie"), (4, "Diana")],
+        schema="id BIGINT, name STRING",
     )
 
     expected = spark.createDataFrame(
-        data=[(1, "cat", "red"), (2, "dog", "green")],
-        schema="id BIGINT, this STRING, that STRING",
+        data=[(1, 100.0, "Alice"), (2, 200.0, "Bob")],
+        schema="id BIGINT, amount DOUBLE, name STRING",
     )
 
-    actual = transforms.add_that(foo, bar, category="colour")
+    actual = transforms.add_customer_name(engine, orders, customers, region="EU")
     assertDataFrameEqual(actual, expected)
 
 ```
+
+This approach to building up ETL processes also works particularly well when we adopt a <span style="color:red; font-weight:bold">RED</span>-<span style="color:green; font-weight:bold">GREEN</span>-**REFACTOR** development style, since in most instances the implementation to read and write data already exists, meaning our focus is on defining the various transformations that need to be applied and, for each, defining a test detailing our expectation for how the input dataset will be transformed, defining a transform that passes the test, then refining and optimizing the underlying transform logic.
+
 
 ### The final product
 
@@ -277,21 +291,21 @@ Using the ideas we've outlined above, the `foo` domain's `bar` job would impleme
 from logging import Logger
 
 from foo.jobs.bar import transforms
-from foo.tools.behaviors import HasAppend, HasRead
+from foo.tools.dals.behaviors import HasAppend, HasRead
 from foo.tools.query import SparkQueryEngine
 
 
-def run(source: HasRead, target: HasAppend, engine: SparkQueryEngine) -> None:
+def run(pos: HasRead, crm: HasRead, curated: HasAppend, engine: SparkQueryEngine) -> None:
     # Extract
-    something = source.read("source_table", "source_schema", select=["first", "second", "third"])
+    orders = pos.read("order", "sales")
+    customers = crm.read("customer", "masterdata")
 
     # Transform
-    transformed = transforms.add_this(engine, something)
-    transformed = transforms.add_that(engine, transformed)
-    transformed = transforms.add_the_other(engine, transformed)
+    transformed = transforms.add_customer_name(engine, orders, customers, region="EU")
+    transformed = transforms.aggregate_amount_by_customer(transformed)
 
     # Load
-    target.append(transformed, "target_table", "target_schema")
+    curated.append(transformed, "order_aggregation", "sales")
 
 ```
 
