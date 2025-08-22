@@ -91,7 +91,7 @@ As outlined in the diagram above, each ETL process should follow the same generi
 
 5. Each ETL process should include end-to-end integration tests to verify that it runs correctly and produces the expected outputs for defined inputs.
 
-### Structuring jobs
+## Structuring a job
 
 Using the `foo` domain example from above, each job within the domain should be constructed from two pieces:
 
