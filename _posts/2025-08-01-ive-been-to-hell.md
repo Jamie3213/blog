@@ -77,7 +77,7 @@ In terms of a loose project structure, a typical, minimal project for the `foo` 
 
 The term "data application" is purposefully vague but in reality these applications often take the form of an Extract, Transform, Load (ETL) process. If we think about the typical ETL process that we might want to build on platforms like Databricks or Amazon EMR, we can really think of the Extract and Load stages as defining the I/O boundaries of the application - it's at these points that we reach out and interact with the world. This fact should inform the overall software design and, in particular, the way we test the different components of the process.
 
-!["A diagram showing the constituent pieces of an ETL process and the associated testing boundaries"]({{ "/assets/img/stop-writing-scripts-etl.png" | relative_url }})
+![](./assets/img/stop-writing-scripts-etl.png)
 
 As outlined in the diagram above, each ETL process should follow the same generic structure where I/O boundaries are isolated from core transformations (i.e., the main business logic):
 
@@ -206,12 +206,14 @@ class SparkQueryEngine:
     def __init__(self, spark: SparkSession) -> None:
         self._spark = spark
 
-    def query(self, statement: str, tables: dict[str, DataFrame], params: dict[str, Any] | None = None) -> DataFrame:
+    def query(
+        self, statement: str, tables: dict[str, DataFrame], params: dict[str, Any] | None = None
+    ) -> DataFrame:
         return self._spark.sql(sqlQuery=statement, args=params, **tables)
 
 ```
 
-This class looks fairly innocuous but it allows us to avoid passing around a loose Spark session and instead lets us pass around an interface that enforces an agreed approach to defining transforms. Now, we can define transforms directly in SQL:
+This class looks fairly unassuming but it allows us to avoid passing around a loose Spark session and instead lets us pass around an interface that enforces an agreed approach to defining transforms. Now, we can define transforms directly in SQL:
 
 ```python
 # src/foo/jobs/bar/transforms.py
@@ -221,7 +223,9 @@ from pyspark.sql import DataFrame
 from foo.tools.query_engine import SparkQueryEngine
 
 
-def add_customer_name(engine: SparkQueryEngine, orders: DataFrame, customers: DataFrame, region: str) -> DataFrame:
+def add_customer_name(
+    engine: SparkQueryEngine, orders: DataFrame, customers: DataFrame, region: str
+) -> DataFrame:
     return engine.query(
         statement="""
             SELECT
@@ -299,7 +303,12 @@ from foo.tools.query_engine import SparkQueryEngine
 from foo.tools.stores.behaviors import HasAppend, HasRead
 
 
-def run(sales_store: HasRead, customer_store: HasRead, curated_store: HasAppend, engine: SparkQueryEngine) -> None:
+def run(
+    sales_store: HasRead,
+    customer_store: HasRead,
+    curated_store: HasAppend,
+    engine: SparkQueryEngine,
+) -> None:
     # Extract
     orders = sales_store.read("order", "sales")
     customers = customer_store.read("customer", "masterdata")
