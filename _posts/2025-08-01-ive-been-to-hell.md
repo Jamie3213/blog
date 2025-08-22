@@ -1,7 +1,7 @@
 ---
 layout: post
 author: Jamie Hargreaves
-title: I've Been to Hell and it Looks Like a Jupyter Notebook
+title: I've Been to Hell and It Looks Like a Jupyter Notebook
 date: 2025-08-01
 permalink: /blog/ive-been-to-hell-and-it-looks-like-a-jupyter-notebook
 tags: python spark etl
@@ -77,7 +77,7 @@ In terms of a loose project structure, a typical, minimal project for the `foo` 
 
 The term "data application" is purposefully vague but in reality these applications often take the form of an Extract, Transform, Load (ETL) process. If we think about the typical ETL process that we might want to build on platforms like Databricks or Amazon EMR, we can really think of the Extract and Load stages as defining the I/O boundaries of the application - it's at these points that we reach out and interact with the world. This fact should inform the overall software design and, in particular, the way we test the different components of the process.
 
-![](./assets/img/stop-writing-scripts-etl.png)
+![]({{ "/assets/img/stop-writing-scripts-etl.png" | relative_url }})
 
 As outlined in the diagram above, each ETL process should follow the same generic structure where I/O boundaries are isolated from core transformations (i.e., the main business logic):
 
@@ -324,16 +324,7 @@ def run(
 
 This approach ensures that:
 
-* Each job is isolated, with the only dependencies being logical dependencies on the data the job needs to read.
-* All core business rules defined by our transforms are testable in isolation and written in a format which is understandable by a large range of users outside of data engineers.
-* The overall ETL process is easily testable, either by standing up real instances of required tables or by mocking the DALs that are passed into the `run` function.
-* The separation of each stage is clear and provides a simple high-level flow of data through the ETL process.
-
-Depending on the similarity of the various jobs in the `foo` domain, we might choose to define a single entrypoint into the application or we might decide to have an entrypoint per job. In either case, the entrypoint is where we would handle instantiating things like a Spark session and instances of our DALs. In addition, we might also want to pass a logger into the `run` function or alternatively define some kind of decorator for transforms to auto-log key execution metrics to avoid cluttering the `run` function.
-
-This approach ensures that:
-
-* Each job is isolated, with dependencies only on the data it reads.
+* Each job is isolated, with dependencies only on the data it reads and the existence of the target it writes to.
 * Core business rules in the transforms are testable in isolation and written in a format accessible to users beyond data engineers.
 * The overall ETL process is easily testable, either by using real table instances or mocking the DALs passed to the `run` function.
 * Each stage is clearly separated, providing a straightforward, high-level view of data flow through the ETL process.
