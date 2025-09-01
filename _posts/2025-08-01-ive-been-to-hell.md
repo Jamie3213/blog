@@ -2,7 +2,7 @@
 layout: post
 author: Jamie Hargreaves
 title: I've Been to Hell and It Looks Like a Jupyter Notebook
-date: 2025-08-01
+date: 2025-09-01
 permalink: /blog/ive-been-to-hell-and-it-looks-like-a-jupyter-notebook
 tags: python spark etl
 ---
